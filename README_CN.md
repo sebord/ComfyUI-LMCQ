@@ -1,5 +1,5 @@
 # ComfyUI-LMCQ
-
+**切换英文版: [English](README.md)**
 ## 介绍
 
 ComfyUI小节点工具包，本工具包主要是更新一些实用的小节点，为comfyui生态做一份贡献，
