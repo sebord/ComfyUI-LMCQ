@@ -637,7 +637,7 @@ class OPS(comfy.ops.manual_cast):
 import folder_paths
 import comfy.sd
 
-class LoadFluxNF4Checkpoint:
+class LmcqLoadFluxNF4Checkpoint:
     @classmethod
     def INPUT_TYPES(s):
         return {"required": { "ckpt_name": (folder_paths.get_filename_list("checkpoints"), ),
@@ -658,12 +658,12 @@ NODE_CLASS_MAPPINGS = {
     "LmcqImageSaver": LmcqImageSaver,
     "LmcqImageSaverTransit": LmcqImageSaverTransit,
     "LmcqImageSaverWeb": LmcqImageSaverWeb,
-    "LoadFluxNF4Checkpoint": LoadFluxNF4Checkpoint
+    "LmcqLoadFluxNF4Checkpoint": LmcqLoadFluxNF4Checkpoint
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "LmcqImageSaver": "Lmcq Image Saver",
     "LmcqImageSaverTransit": "Lmcq Image Saver Transit",
     "LmcqImageSaverWeb": "Lmcq Image Saver Web",
-    "LoadFluxNF4Checkpoint": "Load Flux NF4 Checkpoint"
+    "LmcqLoadFluxNF4Checkpoint": "Lmcq Load Flux NF4 Checkpoint"
 }
