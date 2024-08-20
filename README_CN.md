@@ -41,6 +41,19 @@ api_url：            请求的接口地址
 ![img_1.png](img_1.png)
 
 
+## 更新日志 2024-08-20
+
+Image系列功能新增
+~~~
+watermark_type：水印类型，默认文本，可选项：文本、图片
+
+watermark_image：连接你要用于作为水印的图片
+
+watermark_opacity：水印透明度，默认0.5，最大值为1
+~~~
+
+
+
 ## 参与贡献
 
 zebord

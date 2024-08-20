@@ -43,6 +43,17 @@ api_url:                The requested interface address
 
 ![img_1.png](img_1.png)
 
+## Update log 2024-08-20
+
+Image series features added
+~~~
+watermark_type: watermark type, default text, options: text, image
+
+watermark_image: connect the image you want to use as a watermark
+
+watermark_opacity: watermark transparency, default 0.5, maximum value 1
+~~~
+
 ## Contribute
 
 zebord

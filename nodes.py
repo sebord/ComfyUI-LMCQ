@@ -29,15 +29,19 @@ class LmcqImageSaver:
                      "format": (["png", "jpg", "webp"],),
                      "quality": ("INT", {"default": 95, "min": 1, "max": 100, "step": 1}),
                      "apply_watermark": ("BOOLEAN", {"default": False}),
+                     "watermark_type": (["text", "image"],),
                      "watermark_text": ("STRING", {"default": ""}),
                      "watermark_size": ("INT", {"default": 15, "min": 0, "max": 80, "step": 1}),
                      "watermark_position": (
                      ["Bottom Right", "Bottom Left", "Top Right", "Top Left", "Center", "Left", "Right", "Top",
                       "Bottom"],),
+                     "watermark_opacity": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.1}),
                      "enhance_brightness": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 2.0, "step": 0.1}),
                      "enhance_contrast": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 2.0, "step": 0.1}),
                      "save_metadata": ("BOOLEAN", {"default": True}),
                      },
+                "optional":
+                    {"watermark_image": ("IMAGE",)},
                 "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
                 }
 
@@ -46,9 +50,10 @@ class LmcqImageSaver:
     OUTPUT_NODE = True
     CATEGORY = "Lmcq/Image"
 
-    def save_enhanced_image(self, images, filename_prefix, format, quality, apply_watermark, watermark_text,
-                            watermark_size, watermark_position, enhance_brightness, enhance_contrast,
-                            save_metadata, prompt=None, extra_pnginfo=None):
+    def save_enhanced_image(self, images, filename_prefix, format, quality, apply_watermark, watermark_type,
+                            watermark_text, watermark_size, watermark_position, watermark_opacity,
+                            enhance_brightness, enhance_contrast, save_metadata, prompt=None, extra_pnginfo=None,
+                            watermark_image=None):
         results = []
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -62,8 +67,11 @@ class LmcqImageSaver:
                 enhancer = ImageEnhance.Contrast(img)
                 img = enhancer.enhance(enhance_contrast)
 
-            if apply_watermark and watermark_text:
-                self.add_watermark(img, watermark_text, watermark_size, watermark_position)
+            if apply_watermark:
+                if watermark_type == "text" and watermark_text:
+                    self.add_text_watermark(img, watermark_text, watermark_size, watermark_position, watermark_opacity)
+                elif watermark_type == "image" and watermark_image is not None:
+                    self.add_image_watermark(img, watermark_image, watermark_size, watermark_position, watermark_opacity)
 
             metadata = None
             if save_metadata and format == "png":
@@ -92,41 +100,52 @@ class LmcqImageSaver:
 
         return {"ui": {"images": results}}
 
-    def add_watermark(self, img, text, size, position):
+    def add_text_watermark(self, img, text, size, position, opacity):
         draw = ImageDraw.Draw(img)
-
         font = self.get_chinese_font(size)
-
         bbox = draw.textbbox((0, 0), text, font=font)
         textwidth, textheight = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        x, y = self.get_watermark_position(img.size, (textwidth, textheight), position)
+        watermark = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        watermark_draw = ImageDraw.Draw(watermark)
+        watermark_draw.text((x, y), text, font=font, fill=(255, 255, 255, int(255 * opacity)))
+        img.paste(watermark, (0, 0), watermark)
 
-        width, height = img.size
-        padding = 10  # 文字到边缘的距离
+    def add_image_watermark(self, img, watermark_image, size, position, opacity):
+        watermark = Image.fromarray((watermark_image.squeeze().cpu().numpy() * 255).astype(np.uint8))
+        aspect_ratio = watermark.width / watermark.height
+        new_width = int(img.width * size / 100)
+        new_height = int(new_width / aspect_ratio)
+        watermark = watermark.resize((new_width, new_height), Image.LANCZOS)
+        x, y = self.get_watermark_position(img.size, watermark.size, position)
+        watermark = watermark.convert('RGBA')
+        watermark.putalpha(int(255 * opacity))
+        img.paste(watermark, (x, y), watermark)
 
-        # 根据position确定水印位置
+    def get_watermark_position(self, img_size, watermark_size, position):
+        width, height = img_size
+        w_width, w_height = watermark_size
+        padding = 10
         if position == "Bottom Right":
-            x, y = width - textwidth - padding, height - textheight - padding
+            return width - w_width - padding, height - w_height - padding
         elif position == "Bottom Left":
-            x, y = padding, height - textheight - padding
+            return padding, height - w_height - padding
         elif position == "Top Right":
-            x, y = width - textwidth - padding, padding
+            return width - w_width - padding, padding
         elif position == "Top Left":
-            x, y = padding, padding
+            return padding, padding
         elif position == "Center":
-            x, y = (width - textwidth) // 2, (height - textheight) // 2
+            return (width - w_width) // 2, (height - w_height) // 2
         elif position == "Left":
-            x, y = padding, (height - textheight) // 2
+            return padding, (height - w_height) // 2
         elif position == "Right":
-            x, y = width - textwidth - padding, (height - textheight) // 2
+            return width - w_width - padding, (height - w_height) // 2
         elif position == "Top":
-            x, y = (width - textwidth) // 2, padding
+            return (width - w_width) // 2, padding
         elif position == "Bottom":
-            x, y = (width - textwidth) // 2, height - textheight - padding
+            return (width - w_width) // 2, height - w_height - padding
         else:
-            x, y = width - textwidth - padding, height - textheight - padding  # 默认为右下角
-
-        # 绘制文本，使用半透明白色
-        draw.text((x, y), text, font=font, fill=(255, 255, 255, 128))
+            return width - w_width - padding, height - w_height - padding
 
     def get_chinese_font(self, size):
         chinese_fonts = [
@@ -146,7 +165,6 @@ class LmcqImageSaver:
         print("警告：未找到支持中文的字体，将使用默认字体")
         return ImageFont.load_default()
 
-
 class LmcqImageSaverTransit:
     def __init__(self):
         self.output_dir = folder_paths.get_output_directory()  # 假设输出目录
@@ -160,15 +178,19 @@ class LmcqImageSaverTransit:
                      "format": (["png", "jpg", "webp"],),
                      "quality": ("INT", {"default": 95, "min": 1, "max": 100, "step": 1}),
                      "apply_watermark": ("BOOLEAN", {"default": False}),
+                     "watermark_type": (["text", "image"],),
                      "watermark_text": ("STRING", {"default": ""}),
-                     "watermark_size": ("INT", {"default": 15, "min": 0, "max": 70, "step": 1}),
+                     "watermark_size": ("INT", {"default": 15, "min": 0, "max": 80, "step": 1}),
                      "watermark_position": (
                      ["Bottom Right", "Bottom Left", "Top Right", "Top Left", "Center", "Left", "Right", "Top",
-                      "Bottom"],),  # 新添加的选项
+                      "Bottom"],),
+                     "watermark_opacity": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.1}),
                      "enhance_brightness": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 2.0, "step": 0.1}),
                      "enhance_contrast": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 2.0, "step": 0.1}),
                      "save_metadata": ("BOOLEAN", {"default": True}),
                      },
+                "optional":
+                    {"watermark_image": ("IMAGE",)},
                 "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
                 }
 
@@ -178,22 +200,16 @@ class LmcqImageSaverTransit:
     OUTPUT_NODE = True
     CATEGORY = "Lmcq/Image"
 
-    def save_enhanced_image(self, images, filename_prefix, format, quality, apply_watermark, watermark_text,
-                            watermark_size, watermark_position, enhance_brightness, enhance_contrast,
-                            save_metadata, prompt=None, extra_pnginfo=None):
+    def save_enhanced_image(self, images, filename_prefix, format, quality, apply_watermark, watermark_type,
+                            watermark_text, watermark_size, watermark_position, watermark_opacity,
+                            enhance_brightness, enhance_contrast, save_metadata, prompt=None, extra_pnginfo=None,
+                            watermark_image=None):
         results = []
-        output_images = []  # 存储处理后的图像
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
         for i, image in enumerate(images):
-            # 如果 image 是 Tensor，则转换为 numpy 数组
-            if isinstance(image, torch.Tensor):
-                img_array = (image.squeeze().numpy() * 255).astype(np.uint8)
-            else:
-                img_array = (image * 255).astype(np.uint8)
-            img = Image.fromarray(img_array)
+            img = Image.fromarray((image.squeeze().cpu().numpy() * 255).astype(np.uint8))
 
-            # 应用图像增强
             if enhance_brightness != 1.0:
                 enhancer = ImageEnhance.Brightness(img)
                 img = enhancer.enhance(enhance_brightness)
@@ -201,11 +217,12 @@ class LmcqImageSaverTransit:
                 enhancer = ImageEnhance.Contrast(img)
                 img = enhancer.enhance(enhance_contrast)
 
-            # 添加水印
-            if apply_watermark and watermark_text:
-                self.add_watermark(img, watermark_text, watermark_size, watermark_position)
+            if apply_watermark:
+                if watermark_type == "text" and watermark_text:
+                    self.add_text_watermark(img, watermark_text, watermark_size, watermark_position, watermark_opacity)
+                elif watermark_type == "image" and watermark_image is not None:
+                    self.add_image_watermark(img, watermark_image, watermark_size, watermark_position, watermark_opacity)
 
-            # 准备元数据
             metadata = None
             if save_metadata and format == "png":
                 metadata = PngInfo()
@@ -215,7 +232,6 @@ class LmcqImageSaverTransit:
                     for key, value in extra_pnginfo.items():
                         metadata.add_text(key, json.dumps(value))
 
-            # 保存图像
             filename = f"{filename_prefix}_{timestamp}_{i}.{format}"
             filepath = os.path.join(self.output_dir, filename)
 
@@ -232,47 +248,54 @@ class LmcqImageSaverTransit:
                 "type": self.type
             })
 
-            # 添加到输出图像列表
-            output_images.append(torch.from_numpy(np.array(img)).float() / 255.0)
+        return {"ui": {"images": results}}
 
-        new_images = torch.stack(output_images)
-        return (new_images,)
-
-    def add_watermark(self, img, text, size, position):
+    def add_text_watermark(self, img, text, size, position, opacity):
         draw = ImageDraw.Draw(img)
-
         font = self.get_chinese_font(size)
-
         bbox = draw.textbbox((0, 0), text, font=font)
         textwidth, textheight = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        x, y = self.get_watermark_position(img.size, (textwidth, textheight), position)
+        watermark = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        watermark_draw = ImageDraw.Draw(watermark)
+        watermark_draw.text((x, y), text, font=font, fill=(255, 255, 255, int(255 * opacity)))
+        img.paste(watermark, (0, 0), watermark)
 
-        width, height = img.size
-        padding = 10  # 文字到边缘的距离
+    def add_image_watermark(self, img, watermark_image, size, position, opacity):
+        watermark = Image.fromarray((watermark_image.squeeze().cpu().numpy() * 255).astype(np.uint8))
+        aspect_ratio = watermark.width / watermark.height
+        new_width = int(img.width * size / 100)
+        new_height = int(new_width / aspect_ratio)
+        watermark = watermark.resize((new_width, new_height), Image.LANCZOS)
+        x, y = self.get_watermark_position(img.size, watermark.size, position)
+        watermark = watermark.convert('RGBA')
+        watermark.putalpha(int(255 * opacity))
+        img.paste(watermark, (x, y), watermark)
 
-        # 根据position确定水印位置
+    def get_watermark_position(self, img_size, watermark_size, position):
+        width, height = img_size
+        w_width, w_height = watermark_size
+        padding = 10
         if position == "Bottom Right":
-            x, y = width - textwidth - padding, height - textheight - padding
+            return width - w_width - padding, height - w_height - padding
         elif position == "Bottom Left":
-            x, y = padding, height - textheight - padding
+            return padding, height - w_height - padding
         elif position == "Top Right":
-            x, y = width - textwidth - padding, padding
+            return width - w_width - padding, padding
         elif position == "Top Left":
-            x, y = padding, padding
+            return padding, padding
         elif position == "Center":
-            x, y = (width - textwidth) // 2, (height - textheight) // 2
+            return (width - w_width) // 2, (height - w_height) // 2
         elif position == "Left":
-            x, y = padding, (height - textheight) // 2
+            return padding, (height - w_height) // 2
         elif position == "Right":
-            x, y = width - textwidth - padding, (height - textheight) // 2
+            return width - w_width - padding, (height - w_height) // 2
         elif position == "Top":
-            x, y = (width - textwidth) // 2, padding
+            return (width - w_width) // 2, padding
         elif position == "Bottom":
-            x, y = (width - textwidth) // 2, height - textheight - padding
+            return (width - w_width) // 2, height - w_height - padding
         else:
-            x, y = width - textwidth - padding, height - textheight - padding  # 默认为右下角
-
-        # 绘制文本，使用半透明白色
-        draw.text((x, y), text, font=font, fill=(255, 255, 255, 128))
+            return width - w_width - padding, height - w_height - padding
 
     def get_chinese_font(self, size):
         chinese_fonts = [
@@ -291,7 +314,6 @@ class LmcqImageSaverTransit:
 
         print("警告：未找到支持中文的字体，将使用默认字体")
         return ImageFont.load_default()
-
 
 class LmcqImageSaverWeb:
     def __init__(self):
@@ -310,17 +332,21 @@ class LmcqImageSaverWeb:
                 "format": (["png", "jpg", "webp"],),
                 "quality": ("INT", {"default": 95, "min": 1, "max": 100, "step": 1}),
                 "apply_watermark": ("BOOLEAN", {"default": False}),
+                "watermark_type": (["text", "image"],),
                 "watermark_text": ("STRING", {"default": ""}),
                 "watermark_size": ("INT", {"default": 15, "min": 0, "max": 70, "step": 1}),
                 "watermark_position": (
                     ["Bottom Right", "Bottom Left", "Top Right", "Top Left", "Center", "Left", "Right", "Top",
                      "Bottom"],),  # 新添加的选项
+                "watermark_opacity": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.1}),
                 "enhance_brightness": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 2.0, "step": 0.1}),
                 "enhance_contrast": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 2.0, "step": 0.1}),
                 "save_metadata": ("BOOLEAN", {"default": True}),
                 "enable_api_call": ("BOOLEAN", {"default": False}),  # 是否开启接口调用
                 "api_url": ("STRING", {"default": ""}),  # 接口调用的地址
             },
+            "optional":
+                {"watermark_image": ("IMAGE",)},
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
 
@@ -329,9 +355,9 @@ class LmcqImageSaverWeb:
     OUTPUT_NODE = True
     CATEGORY = "Lmcq/Image"
 
-    def save_enhanced_image(self, images, filename_prefix, format, quality, apply_watermark, watermark_text,
+    def save_enhanced_image(self, images, filename_prefix, format, quality, apply_watermark, watermark_text,watermark_type,watermark_opacity,
                             watermark_size, watermark_position, enhance_brightness, enhance_contrast, save_metadata, enable_api_call, api_url,
-                            prompt=None, extra_pnginfo=None):
+                            prompt=None, extra_pnginfo=None,watermark_image=None):
         results = []
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -353,8 +379,11 @@ class LmcqImageSaverWeb:
                 img = enhancer.enhance(enhance_contrast)
 
             # 添加水印
-            if apply_watermark and watermark_text:
-                self.add_watermark(img, watermark_text, watermark_size, watermark_position)
+            if apply_watermark:
+                if watermark_type == "text" and watermark_text:
+                    self.add_text_watermark(img, watermark_text, watermark_size, watermark_position, watermark_opacity)
+                elif watermark_type == "image" and watermark_image is not None:
+                    self.add_image_watermark(img, watermark_image, watermark_size, watermark_position, watermark_opacity)
 
             # 准备元数据
             metadata = None
@@ -419,41 +448,52 @@ class LmcqImageSaverWeb:
         finally:
             files['file'][1].close()
 
-    def add_watermark(self, img, text, size, position):
+    def add_text_watermark(self, img, text, size, position, opacity):
         draw = ImageDraw.Draw(img)
-
         font = self.get_chinese_font(size)
-
         bbox = draw.textbbox((0, 0), text, font=font)
         textwidth, textheight = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        x, y = self.get_watermark_position(img.size, (textwidth, textheight), position)
+        watermark = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        watermark_draw = ImageDraw.Draw(watermark)
+        watermark_draw.text((x, y), text, font=font, fill=(255, 255, 255, int(255 * opacity)))
+        img.paste(watermark, (0, 0), watermark)
 
-        width, height = img.size
-        padding = 10  # 文字到边缘的距离
+    def add_image_watermark(self, img, watermark_image, size, position, opacity):
+        watermark = Image.fromarray((watermark_image.squeeze().cpu().numpy() * 255).astype(np.uint8))
+        aspect_ratio = watermark.width / watermark.height
+        new_width = int(img.width * size / 100)
+        new_height = int(new_width / aspect_ratio)
+        watermark = watermark.resize((new_width, new_height), Image.LANCZOS)
+        x, y = self.get_watermark_position(img.size, watermark.size, position)
+        watermark = watermark.convert('RGBA')
+        watermark.putalpha(int(255 * opacity))
+        img.paste(watermark, (x, y), watermark)
 
-        # 根据position确定水印位置
+    def get_watermark_position(self, img_size, watermark_size, position):
+        width, height = img_size
+        w_width, w_height = watermark_size
+        padding = 10
         if position == "Bottom Right":
-            x, y = width - textwidth - padding, height - textheight - padding
+            return width - w_width - padding, height - w_height - padding
         elif position == "Bottom Left":
-            x, y = padding, height - textheight - padding
+            return padding, height - w_height - padding
         elif position == "Top Right":
-            x, y = width - textwidth - padding, padding
+            return width - w_width - padding, padding
         elif position == "Top Left":
-            x, y = padding, padding
+            return padding, padding
         elif position == "Center":
-            x, y = (width - textwidth) // 2, (height - textheight) // 2
+            return (width - w_width) // 2, (height - w_height) // 2
         elif position == "Left":
-            x, y = padding, (height - textheight) // 2
+            return padding, (height - w_height) // 2
         elif position == "Right":
-            x, y = width - textwidth - padding, (height - textheight) // 2
+            return width - w_width - padding, (height - w_height) // 2
         elif position == "Top":
-            x, y = (width - textwidth) // 2, padding
+            return (width - w_width) // 2, padding
         elif position == "Bottom":
-            x, y = (width - textwidth) // 2, height - textheight - padding
+            return (width - w_width) // 2, height - w_height - padding
         else:
-            x, y = width - textwidth - padding, height - textheight - padding  # 默认为右下角
-
-        # 绘制文本，使用半透明白色
-        draw.text((x, y), text, font=font, fill=(255, 255, 255, 128))
+            return width - w_width - padding, height - w_height - padding
 
     def get_chinese_font(self, size):
         chinese_fonts = [
