@@ -205,6 +205,7 @@ class LmcqImageSaverTransit:
                             enhance_brightness, enhance_contrast, save_metadata, prompt=None, extra_pnginfo=None,
                             watermark_image=None):
         results = []
+        output_images = []  # 存储处理后的图像
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
         for i, image in enumerate(images):
@@ -247,8 +248,11 @@ class LmcqImageSaverTransit:
                 "subfolder": "",
                 "type": self.type
             })
+            # 添加到输出图像列表
+            output_images.append(torch.from_numpy(np.array(img)).float() / 255.0)
 
-        return {"ui": {"images": results}}
+        new_images = torch.stack(output_images)
+        return (new_images,)
 
     def add_text_watermark(self, img, text, size, position, opacity):
         draw = ImageDraw.Draw(img)
