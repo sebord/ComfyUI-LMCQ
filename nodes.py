@@ -711,3 +711,38 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LmcqImageSaverWeb": "Lmcq Image Saver Web",
     "LmcqLoadFluxNF4Checkpoint": "Lmcq Load Flux NF4 Checkpoint"
 }
+
+class LmcqInputValidator:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "input_text": ("STRING", {"default": ""}),
+                "check_type": (["is_digit", "is_string"], ),  # 修改为判断数字或字符串
+            }
+        }
+    
+    RETURN_TYPES = ("BOOLEAN",)
+    RETURN_NAMES = ("result",)
+    FUNCTION = "validate_input"
+    CATEGORY = "Lmcq/Utils"
+
+    def validate_input(self, input_text, check_type):
+        if not input_text:
+            return (False,)
+            
+        if check_type == "is_digit":
+            return (input_text.isdigit(),)
+        else:  # is_string
+            # 判断是否为字符串 - 只要不是纯数字就认为是字符串
+            return (not input_text.isdigit(),)
+
+# 在 NODE_CLASS_MAPPINGS 字典中添加新节点
+NODE_CLASS_MAPPINGS.update({
+    "LmcqInputValidator": LmcqInputValidator
+})
+
+# 在 NODE_DISPLAY_NAME_MAPPINGS 字典中添加显示名称
+NODE_DISPLAY_NAME_MAPPINGS.update({
+    "LmcqInputValidator": "Lmcq Input Validator"
+})

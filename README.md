@@ -54,6 +54,21 @@ watermark_image: connect the image you want to use as a watermark
 watermark_opacity: watermark transparency, default 0.5, maximum value 1
 ~~~
 
+## Update log 2024-11-11
+
+### Utils
+
+1. LmcqInputValidator: Used to validate input value types, can determine whether the input is a pure number or a string
+
+~~~
+Function details
+
+input_text:     Input text to be validated
+check_type:     Validation type, options:
+               - is_digit: Check if it's a pure number
+               - is_string: Check if it's a string (any input that's not a pure number is considered a string)
+~~~
+
 ## Contribute
 
 zebord
