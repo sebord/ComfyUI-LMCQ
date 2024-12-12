@@ -6,10 +6,6 @@
 ComfyUI small node toolkit, this toolkit is mainly to update some practical small nodes, to make a contribution to the comfyui ecosystem,
 PS: "LMCQ" is the abbreviation of the team name
 
-## Function
-
-Currently, there are two versions: flux and image
-
 ## image
 
 1. LmcqImageSaver: mainly provides watermarks and metadata information for the generated image files
@@ -53,6 +49,22 @@ watermark_image: connect the image you want to use as a watermark
 
 watermark_opacity: watermark transparency, default 0.5, maximum value 1
 ~~~
+
+## Update log 2024-11-11
+
+### Utils
+
+1. LmcqInputValidator: Used to validate input value types, can determine whether the input is a pure number or a string
+
+~~~
+Function details
+
+input_text:     Input text to be validated
+check_type:     Validation type, options:
+               - is_digit: Check if it's a pure number
+               - is_string: Check if it's a string (any input that's not a pure number is considered a string)
+~~~
+
 
 ## Update log 2024-12-12 (Model encryption!!!)
 

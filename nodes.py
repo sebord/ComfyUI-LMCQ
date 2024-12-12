@@ -722,7 +722,7 @@ class LmcqInputValidator:
                 "check_type": (["is_digit", "is_string"], ),  # 修改为判断数字或字符串
             }
         }
-    
+
     RETURN_TYPES = ("BOOLEAN",)
     RETURN_NAMES = ("result",)
     FUNCTION = "validate_input"
@@ -731,7 +731,7 @@ class LmcqInputValidator:
     def validate_input(self, input_text, check_type):
         if not input_text:
             return (False,)
-            
+
         if check_type == "is_digit":
             return (input_text.isdigit(),)
         else:  # is_string
