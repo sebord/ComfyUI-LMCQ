@@ -5,11 +5,8 @@
 ComfyUI小节点工具包，本工具包主要是更新一些实用的小节点，为comfyui生态做一份贡献，
 PS：“LMCQ”是团队名称的简写
 
-## 功能
 
-当前主要有flux、image两个版本组成
-
-## image
+## Image
 
 1. LmcqImageSaver：主要对生成出来的图像文件提供水印和是否保存元数据信息功能
 2. LmcqImageSaverTransit：功能上与LmcqImageSaver没有太大差别，唯一的区别就是可以将处理过后的图像文件发送到下一个节点
@@ -52,7 +49,26 @@ watermark_image：连接你要用于作为水印的图片
 watermark_opacity：水印透明度，默认0.5，最大值为1
 ~~~
 
+## 更新日志 2024-12-12 （模型加密！！！）
 
+### 模型加解密
+![img_2.png](img_2.png)
+### LmcqModelEncryption
+~~~
+功能讲解
+model_name：选择你要加密的模型
+key       ：加密密钥（自定义，用于后续解密的关键密码）
+save_name ：加密后的模型名称
+~~~
+填写完毕之后点击执行，会在你的模型文件夹下生成两个文件，一个模型和一个后缀名为.meta的文件，meta文件记录你的加密签名及版本信息，记住一定要将两个文件放在同一个目录，否则加密后的模型无法解密
+
+### LmcqModelDecryption
+~~~
+功能讲解
+model_name：选择你要解密的模型
+key       ：加密密钥（输入加密时设置的密钥信息）
+save_name ：解密后的模型名称
+~~~
 
 ## 参与贡献
 

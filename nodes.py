@@ -7,6 +7,7 @@ from server import PromptServer
 from PIL.PngImagePlugin import PngInfo
 import requests
 import mimetypes
+from .protection_utils import ModelProtector
 
 import folder_paths
 
@@ -711,3 +712,133 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LmcqImageSaverWeb": "Lmcq Image Saver Web",
     "LmcqLoadFluxNF4Checkpoint": "Lmcq Load Flux NF4 Checkpoint"
 }
+
+class LmcqInputValidator:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "input_text": ("STRING", {"default": ""}),
+                "check_type": (["is_digit", "is_string"], ),  # 修改为判断数字或字符串
+            }
+        }
+    
+    RETURN_TYPES = ("BOOLEAN",)
+    RETURN_NAMES = ("result",)
+    FUNCTION = "validate_input"
+    CATEGORY = "Lmcq/Utils"
+
+    def validate_input(self, input_text, check_type):
+        if not input_text:
+            return (False,)
+            
+        if check_type == "is_digit":
+            return (input_text.isdigit(),)
+        else:  # is_string
+            # 判断是否为字符串 - 只要不是纯数字就认为是字符串
+            return (not input_text.isdigit(),)
+
+# 在 NODE_CLASS_MAPPINGS 字典中添加新节点
+NODE_CLASS_MAPPINGS.update({
+    "LmcqInputValidator": LmcqInputValidator
+})
+
+# 在 NODE_DISPLAY_NAME_MAPPINGS 字典中添加显示名称
+NODE_DISPLAY_NAME_MAPPINGS.update({
+    "LmcqInputValidator": "Lmcq Input Validator"
+})
+
+
+"""
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ModelEncryptionNode 模型加密、解密
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"""
+
+
+class LmcqModelEncryption:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model_name": (folder_paths.get_filename_list("checkpoints"),),
+                "key": ("STRING", {"default": ""}),
+                "save_name": ("STRING", {"default": "encrypted_model"})
+            }
+        }
+
+    RETURN_TYPES = ()
+    FUNCTION = "encrypt_model"
+    OUTPUT_NODE = True
+    CATEGORY = "Lmcq/model_protection"
+
+    def encrypt_model(self, model_name, key, save_name):
+        if not key:
+            raise ValueError("Encryption key cannot be empty")
+
+        # 获取模型路径
+        model_path = folder_paths.get_full_path("checkpoints", model_name)
+        if not model_path:
+            raise ValueError(f"Model {model_name} not found")
+
+        # 构建保存路径
+        save_dir = os.path.join(os.path.dirname(model_path), "encrypted")
+        os.makedirs(save_dir, exist_ok=True)
+        save_path = os.path.join(save_dir, f"{save_name}.safetensors")
+
+        # 加密模型
+        protector = ModelProtector()
+        protector.encrypt(model_path, save_path, key)
+
+        print(f"Model encrypted successfully: {save_path}")
+        return {}
+
+
+class LmcqModelDecryption:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model_name": (folder_paths.get_filename_list("checkpoints"),),
+                "key": ("STRING", {"default": ""}),
+                "save_name": ("STRING", {"default": "decrypted_model"})
+            }
+        }
+
+    RETURN_TYPES = ()
+    FUNCTION = "decrypt_model"
+    OUTPUT_NODE = True
+    CATEGORY = "Lmcq/model_protection"
+
+    def decrypt_model(self, model_name, key, save_name):
+        if not key:
+            raise ValueError("Decryption key cannot be empty")
+
+        # 获取模型路径
+        model_path = folder_paths.get_full_path("checkpoints", model_name)
+        if not model_path:
+            raise ValueError(f"Model {model_name} not found")
+
+        # 构建保存路径
+        save_dir = os.path.join(os.path.dirname(model_path), "decrypted")
+        os.makedirs(save_dir, exist_ok=True)
+        save_path = os.path.join(save_dir, f"{save_name}.safetensors")
+
+        # 解密模型
+        protector = ModelProtector()
+        protector.decrypt(model_path, save_path, key)
+
+        print(f"Model decrypted successfully: {save_path}")
+        return {}
+
+
+# 注册节点
+NODE_CLASS_MAPPINGS.update({
+    "LmcqModelEncryption": LmcqModelEncryption,
+    "LmcqModelDecryption": LmcqModelDecryption
+})
+
+NODE_DISPLAY_NAME_MAPPINGS.update({
+    "LmcqModelEncryption": "Lmcq Model Encryption",
+    "LmcqModelDecryption": "Lmcq Model Decryption"
+})

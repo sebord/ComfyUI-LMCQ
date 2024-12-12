@@ -54,6 +54,29 @@ watermark_image: connect the image you want to use as a watermark
 watermark_opacity: watermark transparency, default 0.5, maximum value 1
 ~~~
 
+## Update log 2024-12-12 (Model encryption!!!)
+
+### Model encryption and decryption
+![img_2.png](img_2.png)
+### LmcqModelEncryption
+~~~
+Function explanation
+
+model_name: Select the model you want to encrypt
+key       : Encryption key (custom, key password for subsequent decryption)
+save_name : Encrypted model name
+~~~
+After filling in, click Execute. Two files will be generated in your model folder, a model and a file with the suffix .meta. The meta file records your encryption signature and version information. Remember to put the two files in the same directory, otherwise the encrypted model cannot be decrypted
+
+### LmcqModelDecryption
+~~~
+Function explanation
+
+model_name: Select the model you want to decrypt
+key       : Encryption key (enter the key information set during encryption)
+save_name : Decrypted model name
+~~~
+
 ## Contribute
 
 zebord
