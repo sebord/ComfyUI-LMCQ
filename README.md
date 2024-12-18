@@ -111,6 +111,29 @@ Usage:
 3. Share the encrypted workflow file
 4. Recipients must use 'decrypt' action with the correct password to use the workflow
 
+## Update Log 2024-12-19 (LoRA Protection!)
+
+### LoRA Model Encryption/Decryption
+![lora_encryption.png](lora_encryption.png)
+
+### LmcqLoraEncryption
+~~~
+Function Details:
+lora_name:  Select the LoRA model to encrypt
+key:        Encryption key (for later decryption)
+save_name:  Name for the encrypted model
+~~~
+After execution, two files will be generated in your loras/encrypted folder: an encrypted model and a .meta file. The meta file contains encryption signature and version information. Both files must be kept together for successful decryption.
+
+### LmcqLoraDecryption
+~~~
+Function Details:
+lora_name:  Select the encrypted LoRA model
+key:        Decryption key (must match encryption key)
+save_name:  Name for the decrypted model
+~~~
+The decrypted LoRA will be saved in the loras/decrypted folder.
+
 ## Contribute
 
 zebord

@@ -1,15 +1,18 @@
 import os
 import json
+import base64
 import datetime
-from PIL import Image, ImageEnhance, ImageDraw, ImageFont
-import numpy as np
-from server import PromptServer
-from PIL.PngImagePlugin import PngInfo
-import requests
 import mimetypes
-from .protection_utils import ModelProtector
-
+import numpy as np
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont
+from PIL.PngImagePlugin import PngInfo
 import folder_paths
+import requests
+from server import PromptServer
+import comfy.sd
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 """
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -453,7 +456,7 @@ class LmcqImageSaverWeb:
         try:
             response = requests.post(self.api_url, data=data, files=files)
             if response.status_code == 200:
-                print(f"{filename} 及其处理���果已成功发送至接口地址。")
+                print(f"{filename} 及其处理果已成功发送至接口地址。")
             else:
                 print(f"发送请求失败，状态码: {response.status_code}")
         except Exception as e:
@@ -755,7 +758,7 @@ class LmcqInputValidator:
         if check_type == "is_digit":
             return (input_text.isdigit(),)
         else:  # is_string
-            # 判断是否为字符串 - 只要不是纯数字就���为是字符串
+            # 判断是否为字符串 - 只要不是纯数字就为是字符串
             return (not input_text.isdigit(),)
 
 
@@ -801,7 +804,7 @@ class LmcqModelEncryption:
         if not model_path:
             raise ValueError(f"Model {model_name} not found")
 
-        # 构建保存路径
+        # ���建保存路径
         save_dir = os.path.join(os.path.dirname(model_path), "encrypted")
         os.makedirs(save_dir, exist_ok=True)
         save_path = os.path.join(save_dir, f"{save_name}.safetensors")
@@ -1005,4 +1008,179 @@ NODE_CLASS_MAPPINGS.update({
 
 NODE_DISPLAY_NAME_MAPPINGS.update({
     "LmcqWorkflowEncryption": "Lmcq Workflow Encryption"
+})
+
+"""
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ LoraEncryptionNode Lora模型加密、解密
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"""
+
+class LmcqLoraEncryption:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "lora_name": (folder_paths.get_filename_list("loras"),),  # 从loras文件夹获取文件列表
+                "key": ("STRING", {"default": ""}),
+                "save_name": ("STRING", {"default": "encrypted_lora"})
+            }
+        }
+
+    RETURN_TYPES = ()
+    FUNCTION = "encrypt_lora"
+    OUTPUT_NODE = True
+    CATEGORY = "Lmcq/lora_protection"
+
+    def encrypt_lora(self, lora_name, key, save_name):
+        if not key:
+            raise ValueError("加密密钥不能为空")
+
+        # 获取LoRA模型路径
+        lora_path = folder_paths.get_full_path("loras", lora_name)
+        if not lora_path:
+            raise ValueError(f"LoRA模型 {lora_name} 未找到")
+
+        # 构建保存路径
+        save_dir = os.path.join(os.path.dirname(lora_path), "encrypted")
+        os.makedirs(save_dir, exist_ok=True)
+        save_path = os.path.join(save_dir, f"{save_name}.safetensors")
+
+        # 加密LoRA模型
+        protector = LoraProtector()
+        protector.encrypt(lora_path, save_path, key)
+
+        print(f"LoRA模型加密成功: {save_path}")
+        return {}
+
+
+class LmcqLoraDecryption:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "lora_name": (folder_paths.get_filename_list("loras"),),
+                "key": ("STRING", {"default": ""}),
+                "save_name": ("STRING", {"default": "decrypted_lora"})
+            }
+        }
+
+    RETURN_TYPES = ()
+    FUNCTION = "decrypt_lora"
+    OUTPUT_NODE = True
+    CATEGORY = "Lmcq/lora_protection"
+
+    def decrypt_lora(self, lora_name, key, save_name):
+        if not key:
+            raise ValueError("解密密钥不能为空")
+
+        # 获取LoRA模型路径
+        lora_path = folder_paths.get_full_path("loras", lora_name)
+        if not lora_path:
+            raise ValueError(f"LoRA模型 {lora_name} 未找到")
+
+        # 构建保存路径
+        save_dir = os.path.join(os.path.dirname(lora_path), "decrypted")
+        os.makedirs(save_dir, exist_ok=True)
+        save_path = os.path.join(save_dir, f"{save_name}.safetensors")
+
+        # 解密LoRA模型
+        protector = LoraProtector()
+        protector.decrypt(lora_path, save_path, key)
+
+        print(f"LoRA模型解密成功: {save_path}")
+        return {}
+
+
+class LoraProtector:
+    def __init__(self):
+        self.version = "1.0.0"
+        self.meta_extension = ".meta"
+
+    def encrypt(self, input_path, output_path, key):
+        try:
+            # 读取LoRA模型
+            with open(input_path, 'rb') as f:
+                model_data = f.read()
+
+            # 生成加密密钥
+            salt = os.urandom(16)
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+            )
+            encryption_key = base64.urlsafe_b64encode(kdf.derive(key.encode()))
+            
+            # 加密模型数据
+            fernet = Fernet(encryption_key)
+            encrypted_data = fernet.encrypt(model_data)
+
+            # 保存加密后的模型
+            with open(output_path, 'wb') as f:
+                f.write(encrypted_data)
+
+            # 保存元数据
+            meta_data = {
+                "version": self.version,
+                "salt": base64.b64encode(salt).decode(),
+                "type": "encrypted_lora"
+            }
+            
+            meta_path = output_path + self.meta_extension
+            with open(meta_path, 'w') as f:
+                json.dump(meta_data, f)
+
+        except Exception as e:
+            raise ValueError(f"LoRA模型加密失败: {str(e)}")
+
+    def decrypt(self, input_path, output_path, key):
+        try:
+            # 读取元数据
+            meta_path = input_path + self.meta_extension
+            if not os.path.exists(meta_path):
+                raise ValueError("未找到加密元数据文件")
+
+            with open(meta_path, 'r') as f:
+                meta_data = json.load(f)
+
+            if meta_data.get("type") != "encrypted_lora":
+                raise ValueError("无效的LoRA加密文件")
+
+            # 读取加��的模型数据
+            with open(input_path, 'rb') as f:
+                encrypted_data = f.read()
+
+            # 重建解密密钥
+            salt = base64.b64decode(meta_data["salt"])
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+            )
+            decryption_key = base64.urlsafe_b64encode(kdf.derive(key.encode()))
+
+            # 解密模型数据
+            fernet = Fernet(decryption_key)
+            decrypted_data = fernet.decrypt(encrypted_data)
+
+            # 保存解密后的模型
+            with open(output_path, 'wb') as f:
+                f.write(decrypted_data)
+
+        except Exception as e:
+            raise ValueError(f"LoRA模型解密失败: {str(e)}")
+
+
+# 注册节点
+NODE_CLASS_MAPPINGS.update({
+    "LmcqLoraEncryption": LmcqLoraEncryption,
+    "LmcqLoraDecryption": LmcqLoraDecryption
+})
+
+NODE_DISPLAY_NAME_MAPPINGS.update({
+    "LmcqLoraEncryption": "Lmcq Lora Encryption",
+    "LmcqLoraDecryption": "Lmcq Lora Decryption"
 })

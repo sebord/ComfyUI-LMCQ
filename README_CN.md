@@ -111,3 +111,26 @@ save_name:     保存文件的名称（将保存在根目录 workflows 文件夹
 2. 使用 encrypt 操作创建加密版本
 3. 分享加密后的工作流文件
 4. 接收者需要使用 decrypt 操作并输入正确的密码才能使用该工作流
+
+## 更新日志 2024-12-19 （LoRA加密！）
+
+### LoRA模型加解密
+![lora_encryption.png](lora_encryption.png)
+
+### LmcqLoraEncryption
+~~~
+功能讲解：
+lora_name：选择要加密的LoRA模型
+key：      加密密钥（自定义，用于后续解密的关键密码）
+save_name：加密后的模型名称
+~~~
+执行后会在 loras/encrypted 文件夹下生成两个文件：加密后的模型和一个后缀为 .meta 的文件。meta 文件记录了加密签名和版本信息，这两个文件必须放在同一目录才能成功解密。
+
+### LmcqLoraDecryption
+~~~
+功能讲解：
+lora_name：选择要解密的LoRA模型
+key：      加密密钥（输入加密时设置的密钥信息）
+save_name：解密后的模型名称
+~~~
+解密后的LoRA模型会保存在 loras/decrypted 文件夹中。
