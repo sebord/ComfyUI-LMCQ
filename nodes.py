@@ -11,12 +11,13 @@ from .protection_utils import ModelProtector
 
 import folder_paths
 
-
 """
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  Image Plus Nodes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
+
+
 class LmcqImageSaver:
     def __init__(self):
         self.output_dir = folder_paths.get_output_directory()
@@ -34,8 +35,8 @@ class LmcqImageSaver:
                      "watermark_text": ("STRING", {"default": ""}),
                      "watermark_size": ("INT", {"default": 15, "min": 0, "max": 80, "step": 1}),
                      "watermark_position": (
-                     ["Bottom Right", "Bottom Left", "Top Right", "Top Left", "Center", "Left", "Right", "Top",
-                      "Bottom"],),
+                         ["Bottom Right", "Bottom Left", "Top Right", "Top Left", "Center", "Left", "Right", "Top",
+                          "Bottom"],),
                      "watermark_opacity": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.1}),
                      "enhance_brightness": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 2.0, "step": 0.1}),
                      "enhance_contrast": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 2.0, "step": 0.1}),
@@ -72,7 +73,8 @@ class LmcqImageSaver:
                 if watermark_type == "text" and watermark_text:
                     self.add_text_watermark(img, watermark_text, watermark_size, watermark_position, watermark_opacity)
                 elif watermark_type == "image" and watermark_image is not None:
-                    self.add_image_watermark(img, watermark_image, watermark_size, watermark_position, watermark_opacity)
+                    self.add_image_watermark(img, watermark_image, watermark_size, watermark_position,
+                                             watermark_opacity)
 
             metadata = None
             if save_metadata and format == "png":
@@ -166,6 +168,7 @@ class LmcqImageSaver:
         print("警告：未找到支持中文的字体，将使用默认字体")
         return ImageFont.load_default()
 
+
 class LmcqImageSaverTransit:
     def __init__(self):
         self.output_dir = folder_paths.get_output_directory()  # 假设输出目录
@@ -183,8 +186,8 @@ class LmcqImageSaverTransit:
                      "watermark_text": ("STRING", {"default": ""}),
                      "watermark_size": ("INT", {"default": 15, "min": 0, "max": 80, "step": 1}),
                      "watermark_position": (
-                     ["Bottom Right", "Bottom Left", "Top Right", "Top Left", "Center", "Left", "Right", "Top",
-                      "Bottom"],),
+                         ["Bottom Right", "Bottom Left", "Top Right", "Top Left", "Center", "Left", "Right", "Top",
+                          "Bottom"],),
                      "watermark_opacity": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.1}),
                      "enhance_brightness": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 2.0, "step": 0.1}),
                      "enhance_contrast": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 2.0, "step": 0.1}),
@@ -223,7 +226,8 @@ class LmcqImageSaverTransit:
                 if watermark_type == "text" and watermark_text:
                     self.add_text_watermark(img, watermark_text, watermark_size, watermark_position, watermark_opacity)
                 elif watermark_type == "image" and watermark_image is not None:
-                    self.add_image_watermark(img, watermark_image, watermark_size, watermark_position, watermark_opacity)
+                    self.add_image_watermark(img, watermark_image, watermark_size, watermark_position,
+                                             watermark_opacity)
 
             metadata = None
             if save_metadata and format == "png":
@@ -320,6 +324,7 @@ class LmcqImageSaverTransit:
         print("警告：未找到支持中文的字体，将使用默认字体")
         return ImageFont.load_default()
 
+
 class LmcqImageSaverWeb:
     def __init__(self):
         self.output_dir = folder_paths.get_output_directory()  # 假设输出目录
@@ -360,9 +365,11 @@ class LmcqImageSaverWeb:
     OUTPUT_NODE = True
     CATEGORY = "Lmcq/Image"
 
-    def save_enhanced_image(self, images, filename_prefix, format, quality, apply_watermark, watermark_text,watermark_type,watermark_opacity,
-                            watermark_size, watermark_position, enhance_brightness, enhance_contrast, save_metadata, enable_api_call, api_url,
-                            prompt=None, extra_pnginfo=None,watermark_image=None):
+    def save_enhanced_image(self, images, filename_prefix, format, quality, apply_watermark, watermark_text,
+                            watermark_type, watermark_opacity,
+                            watermark_size, watermark_position, enhance_brightness, enhance_contrast, save_metadata,
+                            enable_api_call, api_url,
+                            prompt=None, extra_pnginfo=None, watermark_image=None):
         results = []
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -383,12 +390,13 @@ class LmcqImageSaverWeb:
                 enhancer = ImageEnhance.Contrast(img)
                 img = enhancer.enhance(enhance_contrast)
 
-            # 添加水印
+            # 加印
             if apply_watermark:
                 if watermark_type == "text" and watermark_text:
                     self.add_text_watermark(img, watermark_text, watermark_size, watermark_position, watermark_opacity)
                 elif watermark_type == "image" and watermark_image is not None:
-                    self.add_image_watermark(img, watermark_image, watermark_size, watermark_position, watermark_opacity)
+                    self.add_image_watermark(img, watermark_image, watermark_size, watermark_position,
+                                             watermark_opacity)
 
             # 准备元数据
             metadata = None
@@ -417,7 +425,7 @@ class LmcqImageSaverWeb:
                 "type": self.type
             })
 
-            # 如果开启了接口调用，则发送数据到接口
+            # 果开启了接口调用，则发送数据到接口
             if self.enable_api_call:
                 self.send_to_api(filename, current_prompt_id)
 
@@ -445,7 +453,7 @@ class LmcqImageSaverWeb:
         try:
             response = requests.post(self.api_url, data=data, files=files)
             if response.status_code == 200:
-                print(f"{filename} 及其处理结果已成功发送至接口地址。")
+                print(f"{filename} 及其处理���果已成功发送至接口地址。")
             else:
                 print(f"发送请求失败，状态码: {response.status_code}")
         except Exception as e:
@@ -525,15 +533,16 @@ class LmcqImageSaverWeb:
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
-
 import torch
 import bitsandbytes as bnb
 from bitsandbytes.nn.modules import Params4bit, QuantState
+
 
 def functional_linear_4bits(x, weight, bias):
     out = bnb.matmul_4bit(x, weight.t(), bias=bias, quant_state=weight.quant_state)
     out = out.to(x)
     return out
+
 
 def copy_quant_state(state: QuantState, device: torch.device = None) -> QuantState:
     if state is None:
@@ -565,6 +574,7 @@ def copy_quant_state(state: QuantState, device: torch.device = None) -> QuantSta
         state2=state2,
     )
 
+
 class ForgeParams4bit(Params4bit):
     def to(self, *args, **kwargs):
         device, dtype, non_blocking, convert_to_format = torch._C._nn._parse_to(*args, **kwargs)
@@ -587,6 +597,7 @@ class ForgeParams4bit(Params4bit):
             self.quant_state = n.quant_state
             return n
 
+
 class ForgeLoader4Bit(torch.nn.Module):
     def __init__(self, *, device, dtype, quant_type, **kwargs):
         super().__init__()
@@ -604,7 +615,8 @@ class ForgeLoader4Bit(torch.nn.Module):
                 destination[prefix + "weight." + k] = v if keep_vars else v.detach()
         return
 
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys,
+                              error_msgs):
         quant_state_keys = {k[len(prefix + "weight."):] for k in state_dict.keys() if k.startswith(prefix + "weight.")}
 
         if any('bitsandbytes' in k for k in quant_state_keys):
@@ -640,7 +652,9 @@ class ForgeLoader4Bit(torch.nn.Module):
 
             del self.dummy
         else:
-            super()._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
+            super()._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys,
+                                          error_msgs)
+
 
 # Global variables for device and dtype management
 current_device = None
@@ -650,6 +664,7 @@ current_bnb_dtype = None
 
 # You may need to import comfy.ops or define it here
 import comfy.ops
+
 
 class OPS(comfy.ops.manual_cast):
     class Linear(ForgeLoader4Bit):
@@ -682,11 +697,13 @@ class OPS(comfy.ops.manual_cast):
 import folder_paths
 import comfy.sd
 
+
 class LmcqLoadFluxNF4Checkpoint:
     @classmethod
     def INPUT_TYPES(s):
-        return {"required": { "ckpt_name": (folder_paths.get_filename_list("checkpoints"), ),
+        return {"required": {"ckpt_name": (folder_paths.get_filename_list("checkpoints"),),
                              }}
+
     RETURN_TYPES = ("MODEL", "CLIP", "VAE")
     FUNCTION = "load_checkpoint"
 
@@ -694,7 +711,9 @@ class LmcqLoadFluxNF4Checkpoint:
 
     def load_checkpoint(self, ckpt_name):
         ckpt_path = folder_paths.get_full_path("checkpoints", ckpt_name)
-        out = comfy.sd.load_checkpoint_guess_config(ckpt_path, output_vae=True, output_clip=True, embedding_directory=folder_paths.get_folder_paths("embeddings"), model_options={"custom_operations": OPS})
+        out = comfy.sd.load_checkpoint_guess_config(ckpt_path, output_vae=True, output_clip=True,
+                                                    embedding_directory=folder_paths.get_folder_paths("embeddings"),
+                                                    model_options={"custom_operations": OPS})
         return out[:3]
 
 
@@ -713,13 +732,14 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LmcqLoadFluxNF4Checkpoint": "Lmcq Load Flux NF4 Checkpoint"
 }
 
+
 class LmcqInputValidator:
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
                 "input_text": ("STRING", {"default": ""}),
-                "check_type": (["is_digit", "is_string"], ),  # 修改为判断数字或字符串
+                "check_type": (["is_digit", "is_string"],),  # 修改为判断数字或字符串
             }
         }
 
@@ -735,8 +755,9 @@ class LmcqInputValidator:
         if check_type == "is_digit":
             return (input_text.isdigit(),)
         else:  # is_string
-            # 判断是否为字符串 - 只要不是纯数字就认为是字符串
+            # 判断是否为字符串 - 只要不是纯数字就���为是字符串
             return (not input_text.isdigit(),)
+
 
 # 在 NODE_CLASS_MAPPINGS 字典中添加新节点
 NODE_CLASS_MAPPINGS.update({
@@ -747,7 +768,6 @@ NODE_CLASS_MAPPINGS.update({
 NODE_DISPLAY_NAME_MAPPINGS.update({
     "LmcqInputValidator": "Lmcq Input Validator"
 })
-
 
 """
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -841,4 +861,148 @@ NODE_CLASS_MAPPINGS.update({
 NODE_DISPLAY_NAME_MAPPINGS.update({
     "LmcqModelEncryption": "Lmcq Model Encryption",
     "LmcqModelDecryption": "Lmcq Model Decryption"
+})
+
+
+"""
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ LmcqWorkflowEncryption 工作流加解密
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"""
+
+class LmcqWorkflowEncryption:
+    @classmethod
+    def INPUT_TYPES(s):
+        import os
+        import folder_paths
+        
+        workflow_dir = os.path.join(os.path.dirname(folder_paths.base_path), "workflows")
+        if not os.path.exists(workflow_dir):
+            os.makedirs(workflow_dir)
+        
+        workflow_files = [f for f in os.listdir(workflow_dir) if f.endswith('.json')]
+        if not workflow_files:
+            workflow_files = [""]
+            
+        return {
+            "required": {
+                "action": (["encrypt", "decrypt"],),
+                "password": ("STRING", {"default": "", "multiline": False}),
+                "workflow_file": (workflow_files,),
+                "save_name": ("STRING", {"default": "encrypted_workflow", "multiline": False}),
+            }
+        }
+
+    RETURN_TYPES = ()
+    FUNCTION = "process_workflow"
+    OUTPUT_NODE = True
+    CATEGORY = "Lmcq/Utils"
+
+    def process_workflow(self, action, password, workflow_file, save_name):
+        if not password:
+            raise ValueError("密码不能为空")
+
+        try:
+            import os
+            import json
+            import folder_paths
+            from cryptography.fernet import Fernet
+            from cryptography.hazmat.primitives import hashes
+            from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+            import base64
+            
+            workflow_dir = os.path.join(os.path.dirname(folder_paths.base_path), "workflows")
+            if not workflow_file:
+                raise ValueError("请选择工作流文件")
+                
+            workflow_path = os.path.join(workflow_dir, workflow_file)
+            if not os.path.exists(workflow_path):
+                raise ValueError(f"工作流文件不存在: {workflow_file}")
+                
+            if not save_name:
+                raise ValueError("请输入保存文件名")
+                
+            save_path = os.path.join(workflow_dir, f"{save_name}.json")
+
+            def get_key(password, salt=None):
+                if salt is None:
+                    salt = os.urandom(16)
+                kdf = PBKDF2HMAC(
+                    algorithm=hashes.SHA256(),
+                    length=32,
+                    salt=salt,
+                    iterations=100000,
+                )
+                key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
+                return key, salt
+
+            if action == "encrypt":
+                try:
+                    with open(workflow_path, 'r', encoding='utf-8') as f:
+                        workflow_data = f.read()
+                except Exception as e:
+                    raise ValueError(f"读取工作流文件失败: {str(e)}")
+
+                try:
+                    key, salt = get_key(password)
+                    fernet = Fernet(key)
+                    encrypted_data = fernet.encrypt(workflow_data.encode())
+                except Exception as e:
+                    raise ValueError(f"加密过程失败: {str(e)}")
+
+                try:
+                    final_data = {
+                        "salt": base64.b64encode(salt).decode(),
+                        "data": base64.b64encode(encrypted_data).decode(),
+                        "type": "encrypted_workflow"
+                    }
+                    with open(save_path, 'w', encoding='utf-8') as f:
+                        json.dump(final_data, f)
+                except Exception as e:
+                    raise ValueError(f"保存加密文件失败: {str(e)}")
+
+                print(f"工作流已加密并保存到: {save_path}")
+                return {}
+
+            elif action == "decrypt":
+                try:
+                    with open(workflow_path, 'r', encoding='utf-8') as f:
+                        encrypted_data = json.load(f)
+                except Exception as e:
+                    raise ValueError(f"读取加密文件失败: {str(e)}")
+
+                if encrypted_data.get("type") != "encrypted_workflow":
+                    raise ValueError("不是有效的加密工作流文件")
+
+                try:
+                    salt = base64.b64decode(encrypted_data["salt"])
+                    data = base64.b64decode(encrypted_data["data"])
+
+                    key, _ = get_key(password, salt)
+                    fernet = Fernet(key)
+                    decrypted_data = fernet.decrypt(data).decode()
+                except Exception as e:
+                    raise ValueError("密码错误或文件已损坏")
+
+                try:
+                    with open(save_path, 'w', encoding='utf-8') as f:
+                        f.write(decrypted_data)
+                except Exception as e:
+                    raise ValueError(f"保存解密文件失败: {str(e)}")
+
+                print(f"工作流已解密并保存到: {save_path}")
+                return {}
+
+        except Exception as e:
+            import traceback
+            print(f"错误详情:\n{traceback.format_exc()}")
+            raise ValueError(str(e))
+
+# 注册工作流加密节点
+NODE_CLASS_MAPPINGS.update({
+    "LmcqWorkflowEncryption": LmcqWorkflowEncryption
+})
+
+NODE_DISPLAY_NAME_MAPPINGS.update({
+    "LmcqWorkflowEncryption": "Lmcq Workflow Encryption"
 })

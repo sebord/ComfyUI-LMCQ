@@ -89,3 +89,25 @@ save_name ：解密后的模型名称
 ## 参与贡献
 
 zebord
+
+## 更新日志 2024-12-18 （工作流保护！）
+
+### 工作流加解密
+![workflow_encryption.png](workflow_encryption.png)
+
+### LmcqWorkflowEncryption
+~~~
+功能详解：
+action:        选择加密或解密操作
+password:      加解密密码
+workflow_file: 选择要处理的工作流文件（从 workflows 文件夹中选择）
+save_name:     保存文件的名称（将保存在 workflows 文件夹中）
+~~~
+
+该节点允许你对工作流文件进行加密保护，防止未经授权的访问。加密后的工作流文件需要使用正确的密码解密后才能使用。
+
+使用方法：
+1. 将工作流文件保存到 workflows 文件夹中
+2. 使用 encrypt 操作创建加密版本
+3. 分享加密后的工作流文件
+4. 接收者需要使用 decrypt 操作并输入正确的密码才能使用该工作流

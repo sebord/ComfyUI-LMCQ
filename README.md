@@ -89,6 +89,28 @@ key       : Encryption key (enter the key information set during encryption)
 save_name : Decrypted model name
 ~~~
 
+## Update Log 2024-12-18 (Workflow Protection!)
+
+### Workflow Encryption/Decryption
+![workflow_encryption.png](workflow_encryption.png)
+
+### LmcqWorkflowEncryption
+~~~
+Function Details:
+action:        Choose to encrypt or decrypt workflow
+password:      Password for encryption/decryption
+workflow_file: Select the workflow file to process (from 'workflows' folder)
+save_name:     Name for the saved file (will be saved in 'workflows' folder)
+~~~
+
+This node allows you to encrypt your workflow files with a password, preventing unauthorized access. The encrypted workflow can only be loaded after decryption with the correct password.
+
+Usage:
+1. Save your workflow file to the 'workflows' folder
+2. Use 'encrypt' action to create an encrypted version
+3. Share the encrypted workflow file
+4. Recipients must use 'decrypt' action with the correct password to use the workflow
+
 ## Contribute
 
 zebord
