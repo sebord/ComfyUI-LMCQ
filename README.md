@@ -111,7 +111,7 @@ Usage:
 3. Share the encrypted workflow file
 4. Recipients must use 'decrypt' action with the correct password to use the workflow
 
-## Update Log 2024-12-19 (LoRA Protection!)
+## (LoRA Protection!)
 
 ### LoRA Model Encryption/Decryption
 ![lora_encryption.png](lora_encryption.png)

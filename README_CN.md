@@ -85,11 +85,6 @@ key       ：加密密钥（输入加密时设置的密钥信息）
 save_name ：解密后的模型名称
 ~~~
 
-
-## 参与贡献![alt text](QQ_1734493037261.png)
-
-zebord
-
 ## 更新日志 2024-12-18 （工作流保护！）
 
 ### 工作流加解密
@@ -112,7 +107,7 @@ save_name:     保存文件的名称（将保存在根目录 workflows 文件夹
 3. 分享加密后的工作流文件
 4. 接收者需要使用 decrypt 操作并输入正确的密码才能使用该工作流
 
-## 更新日志 2024-12-19 （LoRA加密！）
+## （LoRA加密！）
 
 ### LoRA模型加解密
 ![lora_encryption.png](lora_encryption.png)
@@ -134,3 +129,7 @@ key：      加密密钥（输入加密时设置的密钥信息）
 save_name：解密后的模型名称
 ~~~
 解密后的LoRA模型会保存在 loras/decrypted 文件夹中。
+
+
+
+## 参与贡献!zebord
