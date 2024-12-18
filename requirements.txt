@@ -1,3 +1,4 @@
 bitsandbytes>=0.43.0
 torch>=1.7.0
 numpy>=1.19.0
+cryptography>=41.0.0
