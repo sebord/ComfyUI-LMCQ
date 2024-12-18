@@ -86,7 +86,7 @@ save_name ：解密后的模型名称
 ~~~
 
 
-## 参与贡献
+## 参与贡献![alt text](QQ_1734493037261.png)
 
 zebord
 
@@ -100,8 +100,8 @@ zebord
 功能详解：
 action:        选择加密或解密操作
 password:      加解密密码
-workflow_file: 选择要处理的工作流文件（从 workflows 文件夹中选择）
-save_name:     保存文件的名称（将保存在 workflows 文件夹中）
+workflow_file: 选择要处理的工作流文件（从根目录 workflows 文件夹中选择）
+save_name:     保存文件的名称（将保存在根目录 workflows 文件夹中）
 ~~~
 
 该节点允许你对工作流文件进行加密保护，防止未经授权的访问。加密后的工作流文件需要使用正确的密码解密后才能使用。
