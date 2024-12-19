@@ -13,6 +13,7 @@ import comfy.sd
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from .protection_utils import ModelProtector
 
 """
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -804,7 +805,7 @@ class LmcqModelEncryption:
         if not model_path:
             raise ValueError(f"Model {model_name} not found")
 
-        # ���建保存路径
+        # 构建保存路径
         save_dir = os.path.join(os.path.dirname(model_path), "encrypted")
         os.makedirs(save_dir, exist_ok=True)
         save_path = os.path.join(save_dir, f"{save_name}.safetensors")
@@ -878,12 +879,30 @@ class LmcqWorkflowEncryption:
     def INPUT_TYPES(s):
         import os
         import folder_paths
+        import sys
         
-        workflow_dir = os.path.join(os.path.dirname(folder_paths.base_path), "workflows")
-        if not os.path.exists(workflow_dir):
-            os.makedirs(workflow_dir)
+        # 获取 ComfyUI 根目录的 workflows 文件夹
+        root_workflow_dir = os.path.join(os.path.dirname(folder_paths.base_path), "workflows")
+        if not os.path.exists(root_workflow_dir):
+            os.makedirs(root_workflow_dir)
         
-        workflow_files = [f for f in os.listdir(workflow_dir) if f.endswith('.json')]
+        # 获取插件目录的 workflows 文件夹
+        current_file_path = os.path.abspath(__file__)
+        plugin_dir = os.path.dirname(current_file_path)
+        plugin_workflow_dir = os.path.join(plugin_dir, "workflows")
+        if not os.path.exists(plugin_workflow_dir):
+            os.makedirs(plugin_workflow_dir)
+        
+        # 获取两个目录中的所有 json 文件
+        root_workflow_files = [f for f in os.listdir(root_workflow_dir) if f.endswith('.json')]
+        plugin_workflow_files = [f for f in os.listdir(plugin_workflow_dir) if f.endswith('.json')]
+        
+        # 合并文件列表，添加目录前缀以区分
+        workflow_files = (
+            [f"root/{f}" for f in root_workflow_files] + 
+            [f"plugin/{f}" for f in plugin_workflow_files]
+        )
+        
         if not workflow_files:
             workflow_files = [""]
             
@@ -909,24 +928,28 @@ class LmcqWorkflowEncryption:
             import os
             import json
             import folder_paths
-            from cryptography.fernet import Fernet
-            from cryptography.hazmat.primitives import hashes
-            from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-            import base64
             
-            workflow_dir = os.path.join(os.path.dirname(folder_paths.base_path), "workflows")
-            if not workflow_file:
-                raise ValueError("请选择工作流文件")
+            # 获取当前文件路径
+            current_file_path = os.path.abspath(__file__)
+            plugin_dir = os.path.dirname(current_file_path)
+            
+            # 根据文件路径前缀确定实际文件位置
+            if workflow_file.startswith("root/"):
+                workflow_dir = os.path.join(os.path.dirname(folder_paths.base_path), "workflows")
+                actual_workflow_file = workflow_file[5:]  # 移除 "root/" 前缀
+            elif workflow_file.startswith("plugin/"):
+                workflow_dir = os.path.join(plugin_dir, "workflows")
+                actual_workflow_file = workflow_file[7:]  # 移除 "plugin/" 前缀
+            else:
+                raise ValueError("无效的工作流文件路径")
                 
-            workflow_path = os.path.join(workflow_dir, workflow_file)
+            workflow_path = os.path.join(workflow_dir, actual_workflow_file)
             if not os.path.exists(workflow_path):
-                raise ValueError(f"工作流文件不存在: {workflow_file}")
+                raise ValueError(f"工作流文件不存在: {actual_workflow_file}")
                 
-            if not save_name:
-                raise ValueError("请输入保存文件名")
-                
+            # 保存到与源文件相同的目录
             save_path = os.path.join(workflow_dir, f"{save_name}.json")
-
+            
             def get_key(password, salt=None):
                 if salt is None:
                     salt = os.urandom(16)
@@ -1148,7 +1171,7 @@ class LoraProtector:
             if meta_data.get("type") != "encrypted_lora":
                 raise ValueError("无效的LoRA加密文件")
 
-            # 读取加��的模型数据
+            # 读取加密的模型数据
             with open(input_path, 'rb') as f:
                 encrypted_data = f.read()
 

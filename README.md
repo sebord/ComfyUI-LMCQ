@@ -99,17 +99,21 @@ save_name : Decrypted model name
 Function Details:
 action:        Choose to encrypt or decrypt workflow
 password:      Password for encryption/decryption
-workflow_file: Select the workflow file to process (from 'workflows' folder)
-save_name:     Name for the saved file (will be saved in 'workflows' folder)
+workflow_file: Select the workflow file to process (from root or plugin workflows folder)
+save_name:     Name for the saved file
 ~~~
 
 This node allows you to encrypt your workflow files with a password, preventing unauthorized access. The encrypted workflow can only be loaded after decryption with the correct password.
 
 Usage:
-1. Save your workflow file to the 'workflows' folder
+1. Save your workflow file to either:
+   - ComfyUI root/workflows folder (shown as "root/filename")
+   - Plugin's workflows folder (shown as "plugin/filename")
 2. Use 'encrypt' action to create an encrypted version
 3. Share the encrypted workflow file
 4. Recipients must use 'decrypt' action with the correct password to use the workflow
+
+Note: The encrypted/decrypted file will be saved in the same folder as the source file.
 
 ## (LoRA Protection!)
 
