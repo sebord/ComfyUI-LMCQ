@@ -138,6 +138,64 @@ save_name:  Name for the decrypted model
 ~~~
 The decrypted LoRA will be saved in the loras/decrypted folder.
 
+## Update Log 2024-12-21 (Runtime Protection System!)
+
+### Machine Code & Runtime Protection
+![runtime_protection.png](runtime_protection.png)
+
+### LmcqGetMachineCode
+A utility node that generates a unique machine code based on hardware and system information. This code is used for authorization in the runtime protection system.
+
+### Runtime Model Protection
+~~~
+LmcqRuntimeModelEncryption:
+- model_name:    Select the model to encrypt
+- key:          Encryption key
+- save_name:    Name for the encrypted model
+- machine_codes: List of authorized machine codes (one per line)
+
+LmcqRuntimeModelDecryption:
+- model_name:    Select the encrypted model
+- key:          Decryption key
+~~~
+Provides real-time model encryption/decryption with machine-specific authorization. Models can only be loaded on authorized machines.
+PS: The encrypted model is loaded in memory, so the complete model will not be saved locally. It can only be used in the workflow to protect the complete model from being spread to the greatest extent (only LmcqRuntimeModelDecryption can be used to load the encrypted model, and the rest are invalid)
+
+### Runtime LoRA Protection
+~~~
+LmcqRuntimeLoraEncryption:
+- lora_name:     Select the LoRA to encrypt
+- key:          Encryption key
+- save_name:    Name for the encrypted LoRA
+- machine_codes: List of authorized machine codes
+
+LmcqRuntimeLoraDecryption:
+- model:         Input model
+- clip:         Input CLIP
+- lora_name:    Select the encrypted LoRA
+- key:          Decryption key
+- strength_model: LoRA strength for model
+- strength_clip:  LoRA strength for CLIP
+~~~
+Secure LoRA models with machine-specific authorization and real-time loading.
+PS: The encrypted model is loaded in memory, so the complete model will not be saved locally. It can only be used in the workflow to protect the complete model from being spread to the greatest extent (only LmcqRuntimeLoraDecryption can be used to load the encrypted model, and the rest are invalid)
+### Runtime Workflow Protection
+~~~
+LmcqRuntimeWorkflowEncryption:
+- workflow_file: Select workflow to encrypt
+- key:          Encryption key
+- save_name:    Name for encrypted workflow (.lcwf)
+- machine_codes: List of authorized machine codes
+
+LmcqRuntimeWorkflowDecryption:
+- workflow_file: Select encrypted workflow
+- key:          Decryption key
+- save_name:    Name for decrypted workflow
+~~~
+Protects workflows with machine-specific authorization. Encrypted workflows are saved in .lcwf format and can only be decrypted on authorized machines.
+
+Note: The runtime protection system ensures that protected assets can only be used on specifically authorized machines, providing stronger security than password-only protection.
+
 ## Contribute
 
 zebord

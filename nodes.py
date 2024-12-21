@@ -14,6 +14,7 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from .protection_utils import ModelProtector
+import hmac
 
 """
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -429,7 +430,7 @@ class LmcqImageSaverWeb:
                 "type": self.type
             })
 
-            # 果开启了接口调用，则发送数据到接口
+            # 果开启了口调用，则发送数据到接口
             if self.enable_api_call:
                 self.send_to_api(filename, current_prompt_id)
 
@@ -441,7 +442,7 @@ class LmcqImageSaverWeb:
         # 获取文件的MIME类型
         content_type, _ = mimetypes.guess_type(filepath)
         if content_type is None:
-            content_type = 'application/octet-stream'  # 默认二进制流
+            content_type = 'application/octet-stream'  # 默认二进制
 
         # 构建要发送的数据
         data = {
@@ -457,7 +458,7 @@ class LmcqImageSaverWeb:
         try:
             response = requests.post(self.api_url, data=data, files=files)
             if response.status_code == 200:
-                print(f"{filename} 及其处理果已成功发送至接口地址。")
+                print(f"{filename} 及其处理结果已成功发送至接口地址。")
             else:
                 print(f"发送请求失败，状态码: {response.status_code}")
         except Exception as e:
@@ -759,7 +760,7 @@ class LmcqInputValidator:
         if check_type == "is_digit":
             return (input_text.isdigit(),)
         else:  # is_string
-            # 判断是否为字符串 - 只要不是纯数字就为是字符串
+            # 判断是否为字符串 - 只要不是纯数字就是字符串
             return (not input_text.isdigit(),)
 
 
@@ -947,7 +948,7 @@ class LmcqWorkflowEncryption:
             if not os.path.exists(workflow_path):
                 raise ValueError(f"工作流文件不存在: {actual_workflow_file}")
                 
-            # 保存到与源文件相同的目录
+            # 保存到与源文件同的目录
             save_path = os.path.join(workflow_dir, f"{save_name}.json")
             
             def get_key(password, salt=None):
@@ -1035,7 +1036,7 @@ NODE_DISPLAY_NAME_MAPPINGS.update({
 
 """
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- LoraEncryptionNode Lora模型加密、解密
+ LoraEncryptionNode Lora模加密、解密
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
@@ -1082,86 +1083,31 @@ class LmcqLoraDecryption:
     def INPUT_TYPES(s):
         return {
             "required": {
+                "model": ("MODEL",),
+                "clip": ("CLIP",),
                 "lora_name": (folder_paths.get_filename_list("loras"),),
                 "key": ("STRING", {"default": ""}),
-                "save_name": ("STRING", {"default": "decrypted_lora"})
+                "strength_model": ("FLOAT", {"default": 1.0, "min": -20.0, "max": 20.0, "step": 0.01}),
+                "strength_clip": ("FLOAT", {"default": 1.0, "min": -20.0, "max": 20.0, "step": 0.01}),
             }
         }
 
-    RETURN_TYPES = ()
-    FUNCTION = "decrypt_lora"
-    OUTPUT_NODE = True
+    RETURN_TYPES = ("MODEL", "CLIP")
+    FUNCTION = "decrypt_and_load"
     CATEGORY = "Lmcq/lora_protection"
 
-    def decrypt_lora(self, lora_name, key, save_name):
+    def decrypt_and_load(self, model, clip, lora_name, key, strength_model, strength_clip):
         if not key:
             raise ValueError("解密密钥不能为空")
 
-        # 获取LoRA模型路径
+        # 获取LoRA路径
         lora_path = folder_paths.get_full_path("loras", lora_name)
         if not lora_path:
-            raise ValueError(f"LoRA模型 {lora_name} 未找到")
+            raise ValueError(f"LoRA {lora_name} 未找到")
 
-        # 构建保存路径
-        save_dir = os.path.join(os.path.dirname(lora_path), "decrypted")
-        os.makedirs(save_dir, exist_ok=True)
-        save_path = os.path.join(save_dir, f"{save_name}.safetensors")
-
-        # 解密LoRA模型
-        protector = LoraProtector()
-        protector.decrypt(lora_path, save_path, key)
-
-        print(f"LoRA模型解密成功: {save_path}")
-        return {}
-
-
-class LoraProtector:
-    def __init__(self):
-        self.version = "1.0.0"
-        self.meta_extension = ".meta"
-
-    def encrypt(self, input_path, output_path, key):
-        try:
-            # 读取LoRA模型
-            with open(input_path, 'rb') as f:
-                model_data = f.read()
-
-            # 生成加密密钥
-            salt = os.urandom(16)
-            kdf = PBKDF2HMAC(
-                algorithm=hashes.SHA256(),
-                length=32,
-                salt=salt,
-                iterations=100000,
-            )
-            encryption_key = base64.urlsafe_b64encode(kdf.derive(key.encode()))
-            
-            # 加密模型数据
-            fernet = Fernet(encryption_key)
-            encrypted_data = fernet.encrypt(model_data)
-
-            # 保存加密后的模型
-            with open(output_path, 'wb') as f:
-                f.write(encrypted_data)
-
-            # 保存元数据
-            meta_data = {
-                "version": self.version,
-                "salt": base64.b64encode(salt).decode(),
-                "type": "encrypted_lora"
-            }
-            
-            meta_path = output_path + self.meta_extension
-            with open(meta_path, 'w') as f:
-                json.dump(meta_data, f)
-
-        except Exception as e:
-            raise ValueError(f"LoRA模型加密失败: {str(e)}")
-
-    def decrypt(self, input_path, output_path, key):
         try:
             # 读取元数据
-            meta_path = input_path + self.meta_extension
+            meta_path = lora_path + ".meta"
             if not os.path.exists(meta_path):
                 raise ValueError("未找到加密元数据文件")
 
@@ -1169,13 +1115,33 @@ class LoraProtector:
                 meta_data = json.load(f)
 
             if meta_data.get("type") != "encrypted_lora":
-                raise ValueError("无效的LoRA加密文件")
+                raise ValueError("无效的加密LoRA文件")
 
-            # 读取加密的模型数据
-            with open(input_path, 'rb') as f:
+            # 读取加密数据
+            with open(lora_path, 'rb') as f:
                 encrypted_data = f.read()
 
-            # 重建解密密钥
+            # 验证签名
+            sign_salt = base64.b64decode(meta_data["sign_salt"])
+            sign_kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=sign_salt,
+                iterations=100000,
+            )
+            signing_key = sign_kdf.derive(key.encode())
+            
+            import hashlib
+            h = hmac.new(signing_key, digestmod=hashlib.sha256)
+            h.update(encrypted_data)
+            encrypted_codes = base64.b64decode(meta_data["encrypted_codes"])
+            h.update(encrypted_codes)
+            calculated_signature = h.digest()
+            expected_signature = base64.b64decode(meta_data["signature"])
+            if not hmac.compare_digest(calculated_signature, expected_signature):
+                raise ValueError("LoRA文件或元数据已被篡改")
+
+            # 创建解密器
             salt = base64.b64decode(meta_data["salt"])
             kdf = PBKDF2HMAC(
                 algorithm=hashes.SHA256(),
@@ -1184,20 +1150,44 @@ class LoraProtector:
                 iterations=100000,
             )
             decryption_key = base64.urlsafe_b64encode(kdf.derive(key.encode()))
-
-            # 解密模型数据
             fernet = Fernet(decryption_key)
+
+            # 解密并验证机器码列表
+            codes_data = fernet.decrypt(encrypted_codes)
+            authorized_codes = json.loads(codes_data.decode())
+
+            # 验证机器码
+            machine_code_getter = LmcqGetMachineCode()
+            current_machine_code = machine_code_getter.get_machine_code()[0]
+            if current_machine_code not in authorized_codes:
+                raise ValueError("当前机器未授权使用此LoRA")
+
+            # 解密LoRA数据
             decrypted_data = fernet.decrypt(encrypted_data)
 
-            # 保存解密后的模型
-            with open(output_path, 'wb') as f:
-                f.write(decrypted_data)
+            # 直接从内存加载LoRA
+            import safetensors.torch
+            lora_data = safetensors.torch.load(decrypted_data)
+
+            # 应用LoRA到输入的model和clip
+            new_model = model
+            new_clip = clip
+            
+            if strength_model != 0 or strength_clip != 0:
+                new_model, new_clip = comfy.sd.load_lora_for_models(model, clip, lora_data, strength_model, strength_clip)
+
+            # 清理内存中的敏感数据
+            del decrypted_data
+            del lora_data
+            import gc
+            gc.collect()
+
+            return (new_model, new_clip)
 
         except Exception as e:
-            raise ValueError(f"LoRA模型解密失败: {str(e)}")
+            raise ValueError(f"LoRA解密失败: {str(e)}")
 
-
-# 注册节点
+# 注册新节点
 NODE_CLASS_MAPPINGS.update({
     "LmcqLoraEncryption": LmcqLoraEncryption,
     "LmcqLoraDecryption": LmcqLoraDecryption
@@ -1206,4 +1196,810 @@ NODE_CLASS_MAPPINGS.update({
 NODE_DISPLAY_NAME_MAPPINGS.update({
     "LmcqLoraEncryption": "Lmcq Lora Encryption",
     "LmcqLoraDecryption": "Lmcq Lora Decryption"
+})
+
+class LmcqGetMachineCode:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {}}  # 不需要输入参数
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("machine_code",)
+    FUNCTION = "get_machine_code"
+    CATEGORY = "Lmcq/Protection"
+
+    def get_machine_code(self):
+        import platform
+        import uuid
+        import hashlib
+        import psutil
+        import socket
+        import os
+
+        # 收集系统信息
+        system_info = {
+            # 操作系统信息
+            'os_info': {
+                'system': platform.system(),
+                'release': platform.release(),
+                'version': platform.version(),
+                'machine': platform.machine(),
+            },
+            
+            # Python运行环境
+            'python_env': {
+                'version': platform.python_version(),
+                'implementation': platform.python_implementation(),
+            },
+            
+            # CPU基础信息
+            'cpu_basic': {
+                'arch': platform.architecture(),
+                'cpu_count': psutil.cpu_count(),
+                'processor': platform.processor()
+            },
+            
+            # 用户信息
+            'user_context': {
+                'username': os.getlogin(),
+                'home_path': os.path.expanduser('~'),
+            },
+            
+            # 网络信息
+            'network': {
+                'hostname': socket.gethostname(),
+                'fqdn': socket.getfqdn(),
+            },
+            
+            # 内存信息
+            'memory': {
+                'total': psutil.virtual_memory().total,
+            }
+        }
+        
+        # 生成特征字符串
+        feature_str = str(system_info)
+        
+        # 使用SHA256生成机器码
+        machine_code = hashlib.sha256(feature_str.encode()).hexdigest()
+        
+        # 只返回前32位的机器码
+        return (machine_code[:32],)
+
+class LmcqRuntimeModelEncryption:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model_name": (folder_paths.get_filename_list("checkpoints"),),
+                "key": ("STRING", {"default": ""}),
+                "save_name": ("STRING", {"default": "encrypted_model"}),
+                "machine_codes": ("STRING", {
+                    "multiline": True,
+                    "default": "",
+                    "placeholder": "每行输入一个授权机器码..."
+                })
+            }
+        }
+
+    RETURN_TYPES = ()
+    FUNCTION = "encrypt_model"
+    OUTPUT_NODE = True
+    CATEGORY = "Lmcq/Protection"
+
+    def encrypt_model(self, model_name, key, save_name, machine_codes):
+        if not key:
+            raise ValueError("加密密钥不能为空")
+            
+        if not machine_codes.strip():
+            raise ValueError("至少需要一个授权机器码")
+
+        # 获取模型路径
+        model_path = folder_paths.get_full_path("checkpoints", model_name)
+        if not model_path:
+            raise ValueError(f"模型 {model_name} 未找到")
+
+        try:
+            # 处理机器码列表
+            authorized_codes = [code.strip() for code in machine_codes.split('\n') if code.strip()]
+            if not authorized_codes:
+                raise ValueError("无有效的授权机器码")
+
+            # 生成加密密钥和签名密钥
+            salt = os.urandom(16)
+            sign_salt = os.urandom(16)
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+            )
+            sign_kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=sign_salt,
+                iterations=100000,
+            )
+            encryption_key = base64.urlsafe_b64encode(kdf.derive(key.encode()))
+            signing_key = sign_kdf.derive(key.encode())
+            fernet = Fernet(encryption_key)
+
+            # 加密机器码列表
+            codes_data = json.dumps(authorized_codes).encode()
+            encrypted_codes = fernet.encrypt(codes_data)
+
+            # 读取并加密模型数据
+            with open(model_path, 'rb') as f:
+                model_data = f.read()
+            encrypted_data = fernet.encrypt(model_data)
+
+            # 构建保存路径
+            save_dir = os.path.join(os.path.dirname(model_path), "encrypted")
+            os.makedirs(save_dir, exist_ok=True)
+            save_path = os.path.join(save_dir, f"{save_name}.safetensors")
+
+            # ��存加密后的模型
+            with open(save_path, 'wb') as f:
+                f.write(encrypted_data)
+
+            # 生成签名
+            import hashlib
+            h = hmac.new(signing_key, digestmod=hashlib.sha256)
+            h.update(encrypted_data)
+            h.update(encrypted_codes)
+            signature = base64.b64encode(h.digest()).decode()
+
+            # 保存元数据
+            meta_data = {
+                "version": "1.0.0",
+                "salt": base64.b64encode(salt).decode(),
+                "sign_salt": base64.b64encode(sign_salt).decode(),
+                "type": "encrypted_model",
+                "encrypted_codes": base64.b64encode(encrypted_codes).decode(),
+                "signature": signature
+            }
+            
+            meta_path = save_path + ".meta"
+            with open(meta_path, 'w') as f:
+                json.dump(meta_data, f)
+
+            print(f"模型加密成功: {save_path}")
+            return {}
+
+        except Exception as e:
+            raise ValueError(f"模型加密失败: {str(e)}")
+
+class LmcqRuntimeModelDecryption:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model_name": (folder_paths.get_filename_list("checkpoints"),),
+                "key": ("STRING", {"default": ""})
+            }
+        }
+
+    RETURN_TYPES = ("MODEL", "CLIP", "VAE")
+    FUNCTION = "decrypt_and_load"
+    CATEGORY = "Lmcq/Protection"
+
+    def decrypt_and_load(self, model_name, key):
+        if not key:
+            raise ValueError("解密密钥不能为空")
+
+        # 获取模型路径
+        model_path = folder_paths.get_full_path("checkpoints", model_name)
+        if not model_path:
+            raise ValueError(f"模型 {model_name} 未找到")
+
+        try:
+            # 读取元数据
+            meta_path = model_path + ".meta"
+            if not os.path.exists(meta_path):
+                raise ValueError("未找到加密元数据文件")
+
+            with open(meta_path, 'r') as f:
+                meta_data = json.load(f)
+
+            if meta_data.get("type") != "encrypted_model":
+                raise ValueError("无效的加密模型文件")
+
+            # 读取加密数据
+            with open(model_path, 'rb') as f:
+                encrypted_data = f.read()
+
+            # 验证签名
+            sign_salt = base64.b64decode(meta_data["sign_salt"])
+            sign_kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=sign_salt,
+                iterations=100000,
+            )
+            signing_key = sign_kdf.derive(key.encode())
+            
+            import hashlib
+            h = hmac.new(signing_key, digestmod=hashlib.sha256)
+            h.update(encrypted_data)
+            encrypted_codes = base64.b64decode(meta_data["encrypted_codes"])
+            h.update(encrypted_codes)
+            calculated_signature = h.digest()
+            expected_signature = base64.b64decode(meta_data["signature"])
+            if not hmac.compare_digest(calculated_signature, expected_signature):
+                raise ValueError("模型文件或元数据已被篡改")
+
+            # 创建解密器
+            salt = base64.b64decode(meta_data["salt"])
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+            )
+            decryption_key = base64.urlsafe_b64encode(kdf.derive(key.encode()))
+            fernet = Fernet(decryption_key)
+
+            # 解密并验证机器码列表
+            codes_data = fernet.decrypt(encrypted_codes)
+            authorized_codes = json.loads(codes_data.decode())
+
+            # 验证机器码
+            machine_code_getter = LmcqGetMachineCode()
+            current_machine_code = machine_code_getter.get_machine_code()[0]
+            if current_machine_code not in authorized_codes:
+                raise ValueError("当前机器未授权使用此模型")
+
+            # 解密模型数据
+            decrypted_data = fernet.decrypt(encrypted_data)
+
+            # 直接从内存加载模型
+            import safetensors.torch
+            model_data = safetensors.torch.load(decrypted_data)
+
+            # 使用 ComfyUI 的加载机制
+            out = comfy.sd.load_state_dict_guess_config(
+                model_data,
+                output_vae=True,
+                output_clip=True,
+                output_clipvision=False,
+                embedding_directory=folder_paths.get_folder_paths("embeddings")
+            )
+
+            if out is None:
+                raise ValueError("无法识别模型类型")
+
+            # 清理内存中的敏感数据
+            del decrypted_data
+            del model_data
+            import gc
+            gc.collect()
+
+            return out[:3]
+
+        except Exception as e:
+            raise ValueError(f"模型解密失败: {str(e)}")
+
+# 注册新节点
+NODE_CLASS_MAPPINGS.update({
+    "LmcqGetMachineCode": LmcqGetMachineCode,
+    "LmcqRuntimeModelEncryption": LmcqRuntimeModelEncryption,
+    "LmcqRuntimeModelDecryption": LmcqRuntimeModelDecryption
+})
+
+NODE_DISPLAY_NAME_MAPPINGS.update({
+    "LmcqGetMachineCode": "Lmcq Get Machine Code",
+    "LmcqRuntimeModelEncryption": "Lmcq Runtime Model Encryption",
+    "LmcqRuntimeModelDecryption": "Lmcq Runtime Model Decryption"
+})
+
+class LmcqRuntimeLoraEncryption:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "lora_name": (folder_paths.get_filename_list("loras"),),
+                "key": ("STRING", {"default": ""}),
+                "save_name": ("STRING", {"default": "encrypted_lora"}),
+                "machine_codes": ("STRING", {
+                    "multiline": True,
+                    "default": "",
+                    "placeholder": "每行输入一个授权机器码..."
+                })
+            }
+        }
+
+    RETURN_TYPES = ()
+    FUNCTION = "encrypt_lora"
+    OUTPUT_NODE = True
+    CATEGORY = "Lmcq/Protection"
+
+    def encrypt_lora(self, lora_name, key, save_name, machine_codes):
+        if not key:
+            raise ValueError("加密密钥不能为空")
+            
+        if not machine_codes.strip():
+            raise ValueError("至少需要一个授权机器码")
+
+        # 获取LoRA路径
+        lora_path = folder_paths.get_full_path("loras", lora_name)
+        if not lora_path:
+            raise ValueError(f"LoRA {lora_name} 未找到")
+
+        try:
+            # 处理机器码列表
+            authorized_codes = [code.strip() for code in machine_codes.split('\n') if code.strip()]
+            if not authorized_codes:
+                raise ValueError("无有效的授权机器码")
+
+            # 生成加密密钥和签名密钥
+            salt = os.urandom(16)
+            sign_salt = os.urandom(16)
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+            )
+            sign_kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=sign_salt,
+                iterations=100000,
+            )
+            encryption_key = base64.urlsafe_b64encode(kdf.derive(key.encode()))
+            signing_key = sign_kdf.derive(key.encode())
+            fernet = Fernet(encryption_key)
+
+            # 加密机器码列表
+            codes_data = json.dumps(authorized_codes).encode()
+            encrypted_codes = fernet.encrypt(codes_data)
+
+            # 读取并加密LoRA数据
+            with open(lora_path, 'rb') as f:
+                lora_data = f.read()
+            encrypted_data = fernet.encrypt(lora_data)
+
+            # 构建保存路径
+            save_dir = os.path.join(os.path.dirname(lora_path), "encrypted")
+            os.makedirs(save_dir, exist_ok=True)
+            save_path = os.path.join(save_dir, f"{save_name}.safetensors")
+
+            # 保存加密后的LoRA
+            with open(save_path, 'wb') as f:
+                f.write(encrypted_data)
+
+            # 生成签名
+            import hashlib
+            h = hmac.new(signing_key, digestmod=hashlib.sha256)
+            h.update(encrypted_data)
+            h.update(encrypted_codes)
+            signature = base64.b64encode(h.digest()).decode()
+
+            # 保存元数据
+            meta_data = {
+                "version": "1.0.0",
+                "salt": base64.b64encode(salt).decode(),
+                "sign_salt": base64.b64encode(sign_salt).decode(),
+                "type": "encrypted_lora",
+                "encrypted_codes": base64.b64encode(encrypted_codes).decode(),
+                "signature": signature
+            }
+            
+            meta_path = save_path + ".meta"
+            with open(meta_path, 'w') as f:
+                json.dump(meta_data, f)
+
+            print(f"LoRA加密成功: {save_path}")
+            return {}
+
+        except Exception as e:
+            raise ValueError(f"LoRA加密失败: {str(e)}")
+
+class LmcqRuntimeLoraDecryption:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model": ("MODEL",),
+                "clip": ("CLIP",),
+                "lora_name": (folder_paths.get_filename_list("loras"),),
+                "key": ("STRING", {"default": ""}),
+                "strength_model": ("FLOAT", {"default": 1.0, "min": -20.0, "max": 20.0, "step": 0.01}),
+                "strength_clip": ("FLOAT", {"default": 1.0, "min": -20.0, "max": 20.0, "step": 0.01}),
+            }
+        }
+
+    RETURN_TYPES = ("MODEL", "CLIP")
+    FUNCTION = "decrypt_and_load"
+    CATEGORY = "Lmcq/Protection"
+
+    def decrypt_and_load(self, model, clip, lora_name, key, strength_model, strength_clip):
+        if not key:
+            raise ValueError("解密密钥不能为空")
+
+        # 获取LoRA路径
+        lora_path = folder_paths.get_full_path("loras", lora_name)
+        if not lora_path:
+            raise ValueError(f"LoRA {lora_name} 未找到")
+
+        try:
+            # 读取元数据
+            meta_path = lora_path + ".meta"
+            if not os.path.exists(meta_path):
+                raise ValueError("未找到加密元数据文件")
+
+            with open(meta_path, 'r') as f:
+                meta_data = json.load(f)
+
+            if meta_data.get("type") != "encrypted_lora":
+                raise ValueError("无效的加密LoRA文件")
+
+            # 读取加密数据
+            with open(lora_path, 'rb') as f:
+                encrypted_data = f.read()
+
+            # 验证签名
+            sign_salt = base64.b64decode(meta_data["sign_salt"])
+            sign_kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=sign_salt,
+                iterations=100000,
+            )
+            signing_key = sign_kdf.derive(key.encode())
+            
+            import hashlib
+            h = hmac.new(signing_key, digestmod=hashlib.sha256)
+            h.update(encrypted_data)
+            encrypted_codes = base64.b64decode(meta_data["encrypted_codes"])
+            h.update(encrypted_codes)
+            calculated_signature = h.digest()
+            expected_signature = base64.b64decode(meta_data["signature"])
+            if not hmac.compare_digest(calculated_signature, expected_signature):
+                raise ValueError("LoRA文件或元数据已被篡改")
+
+            # 创建解密器
+            salt = base64.b64decode(meta_data["salt"])
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+            )
+            decryption_key = base64.urlsafe_b64encode(kdf.derive(key.encode()))
+            fernet = Fernet(decryption_key)
+
+            # 解密并验证机器码列表
+            codes_data = fernet.decrypt(encrypted_codes)
+            authorized_codes = json.loads(codes_data.decode())
+
+            # 验证机器码
+            machine_code_getter = LmcqGetMachineCode()
+            current_machine_code = machine_code_getter.get_machine_code()[0]
+            if current_machine_code not in authorized_codes:
+                raise ValueError("当前机器未授权使用此LoRA")
+
+            # 解密LoRA数据
+            decrypted_data = fernet.decrypt(encrypted_data)
+
+            # 直接从内存加载LoRA
+            import safetensors.torch
+            lora_data = safetensors.torch.load(decrypted_data)
+
+            # 应用LoRA到输入的model和clip
+            new_model = model
+            new_clip = clip
+            
+            if strength_model != 0 or strength_clip != 0:
+                new_model, new_clip = comfy.sd.load_lora_for_models(model, clip, lora_data, strength_model, strength_clip)
+
+            # 清理内存中的敏感数据
+            del decrypted_data
+            del lora_data
+            import gc
+            gc.collect()
+
+            return (new_model, new_clip)
+
+        except Exception as e:
+            raise ValueError(f"LoRA解密失败: {str(e)}")
+
+# 注册新节点
+NODE_CLASS_MAPPINGS.update({
+    "LmcqRuntimeLoraEncryption": LmcqRuntimeLoraEncryption,
+    "LmcqRuntimeLoraDecryption": LmcqRuntimeLoraDecryption
+})
+
+NODE_DISPLAY_NAME_MAPPINGS.update({
+    "LmcqRuntimeLoraEncryption": "Lmcq Runtime Lora Encryption",
+    "LmcqRuntimeLoraDecryption": "Lmcq Runtime Lora Decryption"
+})
+
+class LmcqRuntimeWorkflowEncryption:
+    @classmethod
+    def INPUT_TYPES(s):
+        import os
+        import folder_paths
+        
+        # 获取 ComfyUI 根目录的 workflows 文件夹
+        root_workflow_dir = os.path.join(os.path.dirname(folder_paths.base_path), "workflows")
+        if not os.path.exists(root_workflow_dir):
+            os.makedirs(root_workflow_dir)
+        
+        # 获取插件目录的 workflows 文件夹
+        current_file_path = os.path.abspath(__file__)
+        plugin_dir = os.path.dirname(current_file_path)
+        plugin_workflow_dir = os.path.join(plugin_dir, "workflows")
+        if not os.path.exists(plugin_workflow_dir):
+            os.makedirs(plugin_workflow_dir)
+        
+        # 获取两个目录中的所有 json 文件
+        root_workflow_files = [f for f in os.listdir(root_workflow_dir) if f.endswith('.json')]
+        plugin_workflow_files = [f for f in os.listdir(plugin_workflow_dir) if f.endswith('.json')]
+        
+        # 合并文件列表，添加目录前缀以区分
+        workflow_files = (
+            [f"root/{f}" for f in root_workflow_files] + 
+            [f"plugin/{f}" for f in plugin_workflow_files]
+        )
+        
+        if not workflow_files:
+            workflow_files = [""]
+            
+        return {
+            "required": {
+                "workflow_file": (workflow_files,),
+                "key": ("STRING", {"default": ""}),
+                "save_name": ("STRING", {"default": "encrypted_workflow"}),
+                "machine_codes": ("STRING", {
+                    "multiline": True,
+                    "default": "",
+                    "placeholder": "每行输入一个授权机器码..."
+                })
+            }
+        }
+
+    RETURN_TYPES = ()
+    FUNCTION = "encrypt_workflow"
+    OUTPUT_NODE = True
+    CATEGORY = "Lmcq/Protection"
+
+    def encrypt_workflow(self, workflow_file, key, save_name, machine_codes):
+        if not key:
+            raise ValueError("加密密钥不能为空")
+            
+        if not machine_codes.strip():
+            raise ValueError("至少需要一个授权机器码")
+
+        try:
+            import os
+            import json
+            import folder_paths
+            
+            # 获取当前文件路径
+            current_file_path = os.path.abspath(__file__)
+            plugin_dir = os.path.dirname(current_file_path)
+            
+            # 根据文件路径前缀确定实际文件位置
+            if workflow_file.startswith("root/"):
+                workflow_dir = os.path.join(os.path.dirname(folder_paths.base_path), "workflows")
+                actual_workflow_file = workflow_file[5:]  # 移除 "root/" 前缀
+            elif workflow_file.startswith("plugin/"):
+                workflow_dir = os.path.join(plugin_dir, "workflows")
+                actual_workflow_file = workflow_file[7:]  # 移除 "plugin/" 前缀
+            else:
+                raise ValueError("无效的工作流文件路径")
+                
+            workflow_path = os.path.join(workflow_dir, actual_workflow_file)
+            if not os.path.exists(workflow_path):
+                raise ValueError(f"工作流文件不存在: {actual_workflow_file}")
+
+            # 处理机器码列表
+            authorized_codes = [code.strip() for code in machine_codes.split('\n') if code.strip()]
+            if not authorized_codes:
+                raise ValueError("无有效的授权机器码")
+
+            # 生成加密密钥和签名密钥
+            salt = os.urandom(16)
+            sign_salt = os.urandom(16)
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+            )
+            sign_kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=sign_salt,
+                iterations=100000,
+            )
+            encryption_key = base64.urlsafe_b64encode(kdf.derive(key.encode()))
+            signing_key = sign_kdf.derive(key.encode())
+            fernet = Fernet(encryption_key)
+
+            # 读取工作流文件
+            with open(workflow_path, 'r', encoding='utf-8') as f:
+                workflow_data = f.read()
+
+            # 加密工作流数据
+            encrypted_workflow = fernet.encrypt(workflow_data.encode())
+
+            # 加密机器码列表
+            codes_data = json.dumps(authorized_codes).encode()
+            encrypted_codes = fernet.encrypt(codes_data)
+
+            # 生成签名
+            import hashlib
+            h = hmac.new(signing_key, digestmod=hashlib.sha256)
+            h.update(encrypted_workflow)
+            h.update(encrypted_codes)
+            signature = base64.b64encode(h.digest()).decode()
+
+            # 构建加密数据结构
+            encrypted_data = {
+                "version": "1.0.0",
+                "salt": base64.b64encode(salt).decode(),
+                "sign_salt": base64.b64encode(sign_salt).decode(),
+                "type": "encrypted_workflow",
+                "encrypted_codes": base64.b64encode(encrypted_codes).decode(),
+                "encrypted_workflow": base64.b64encode(encrypted_workflow).decode(),
+                "signature": signature
+            }
+
+            # 保存加密后的工作流
+            save_path = os.path.join(workflow_dir, f"{save_name}.lcwf")
+            with open(save_path, 'w', encoding='utf-8') as f:
+                json.dump(encrypted_data, f)
+
+            print(f"工作流加密成功: {save_path}")
+            return {}
+
+        except Exception as e:
+            raise ValueError(f"工作流加密失败: {str(e)}")
+
+class LmcqRuntimeWorkflowDecryption:
+    @classmethod
+    def INPUT_TYPES(s):
+        import os
+        import folder_paths
+        
+        # 获取 ComfyUI 根目录的 workflows 文件夹
+        root_workflow_dir = os.path.join(os.path.dirname(folder_paths.base_path), "workflows")
+        if not os.path.exists(root_workflow_dir):
+            os.makedirs(root_workflow_dir)
+        
+        # 获取插件目录的 workflows 文件夹
+        current_file_path = os.path.abspath(__file__)
+        plugin_dir = os.path.dirname(current_file_path)
+        plugin_workflow_dir = os.path.join(plugin_dir, "workflows")
+        if not os.path.exists(plugin_workflow_dir):
+            os.makedirs(plugin_workflow_dir)
+        
+        # 获取两个目录中的所有 lcwf 文件
+        root_workflow_files = [f for f in os.listdir(root_workflow_dir) if f.endswith('.lcwf')]
+        plugin_workflow_files = [f for f in os.listdir(plugin_workflow_dir) if f.endswith('.lcwf')]
+        
+        # 合并文件列表，添加目录前缀以区分
+        workflow_files = (
+            [f"root/{f}" for f in root_workflow_files] + 
+            [f"plugin/{f}" for f in plugin_workflow_files]
+        )
+        
+        if not workflow_files:
+            workflow_files = [""]
+            
+        return {
+            "required": {
+                "workflow_file": (workflow_files,),
+                "key": ("STRING", {"default": ""}),
+                "save_name": ("STRING", {"default": "decrypted_workflow"})
+            }
+        }
+
+    RETURN_TYPES = ()
+    FUNCTION = "decrypt_workflow"
+    OUTPUT_NODE = True
+    CATEGORY = "Lmcq/Protection"
+
+    def decrypt_workflow(self, workflow_file, key, save_name):
+        if not key:
+            raise ValueError("解密密钥不能为空")
+
+        try:
+            import os
+            import json
+            import folder_paths
+            
+            # 获取当前文件路径
+            current_file_path = os.path.abspath(__file__)
+            plugin_dir = os.path.dirname(current_file_path)
+            
+            # 根据文件路径前缀确定实际文件位置
+            if workflow_file.startswith("root/"):
+                workflow_dir = os.path.join(os.path.dirname(folder_paths.base_path), "workflows")
+                actual_workflow_file = workflow_file[5:]  # 移除 "root/" 前缀
+            elif workflow_file.startswith("plugin/"):
+                workflow_dir = os.path.join(plugin_dir, "workflows")
+                actual_workflow_file = workflow_file[7:]  # 移除 "plugin/" 前缀
+            else:
+                raise ValueError("无效的工作流文件路径")
+                
+            workflow_path = os.path.join(workflow_dir, actual_workflow_file)
+            if not os.path.exists(workflow_path):
+                raise ValueError(f"工作流文件不存在: {actual_workflow_file}")
+
+            # 读取加密的工作流文件
+            with open(workflow_path, 'r', encoding='utf-8') as f:
+                encrypted_data = json.load(f)
+
+            if encrypted_data.get("type") != "encrypted_workflow":
+                raise ValueError("无效的加密工作流文件")
+
+            # 验证签名
+            sign_salt = base64.b64decode(encrypted_data["sign_salt"])
+            sign_kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=sign_salt,
+                iterations=100000,
+            )
+            signing_key = sign_kdf.derive(key.encode())
+            
+            encrypted_workflow = base64.b64decode(encrypted_data["encrypted_workflow"])
+            encrypted_codes = base64.b64decode(encrypted_data["encrypted_codes"])
+            
+            import hashlib
+            h = hmac.new(signing_key, digestmod=hashlib.sha256)
+            h.update(encrypted_workflow)
+            h.update(encrypted_codes)
+            calculated_signature = h.digest()
+            expected_signature = base64.b64decode(encrypted_data["signature"])
+            if not hmac.compare_digest(calculated_signature, expected_signature):
+                raise ValueError("工作流文件已被篡改")
+
+            # 创建解密器
+            salt = base64.b64decode(encrypted_data["salt"])
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+            )
+            decryption_key = base64.urlsafe_b64encode(kdf.derive(key.encode()))
+            fernet = Fernet(decryption_key)
+
+            # 解密并验证机器码列表
+            codes_data = fernet.decrypt(encrypted_codes)
+            authorized_codes = json.loads(codes_data.decode())
+
+            # 验证机器码
+            machine_code_getter = LmcqGetMachineCode()
+            current_machine_code = machine_code_getter.get_machine_code()[0]
+            if current_machine_code not in authorized_codes:
+                raise ValueError("当前机器未授权使用此工作流")
+
+            # 解密工作流数据
+            decrypted_data = fernet.decrypt(encrypted_workflow).decode()
+
+            # 保存解密后的工作流
+            save_path = os.path.join(workflow_dir, f"{save_name}.json")
+            with open(save_path, 'w', encoding='utf-8') as f:
+                f.write(decrypted_data)
+
+            print(f"工作流解密成功: {save_path}")
+            return {}
+
+        except Exception as e:
+            raise ValueError(f"工作流解密失败: {str(e)}")
+
+# 注册新节点
+NODE_CLASS_MAPPINGS.update({
+    "LmcqRuntimeWorkflowEncryption": LmcqRuntimeWorkflowEncryption,
+    "LmcqRuntimeWorkflowDecryption": LmcqRuntimeWorkflowDecryption
+})
+
+NODE_DISPLAY_NAME_MAPPINGS.update({
+    "LmcqRuntimeWorkflowEncryption": "Lmcq Runtime Workflow Encryption",
+    "LmcqRuntimeWorkflowDecryption": "Lmcq Runtime Workflow Decryption"
 })

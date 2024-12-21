@@ -99,7 +99,7 @@ workflow_file: 选择要处理的工作流文件（可从根目录或插件的 w
 save_name:     保存文件的名称
 ~~~
 
-该节点允许你对工作流文件进行加密保护，防止未经授权的访问。加密后的工作流文件需要使用正确的密码解密后才能使用。
+该节点允许你对工作流文件进行加密保护，防止未���授权的访问。加密后的工作流文件需要使用正确的密码解密后才能使用。
 
 使用方法：
 1. 将工作流文件保存到以下任一位置：
@@ -135,5 +135,65 @@ save_name：解密后的模型名称
 解密后的LoRA模型会保存在 loras/decrypted 文件夹中。
 
 
+## 更新日志 2024-12-21 （运行时保护系统！）
 
-## 参与贡献!zebord
+### 机器码与运行时保护
+![runtime_protection.png](runtime_protection.png)
+
+### LmcqGetMachineCode
+用于生成基于硬件和系统信息的唯一机器码的工具节点。此机器码用于运行时保护系统中的授权验证。
+
+### 运行时模型保护
+~~~
+LmcqRuntimeModelEncryption（运行时模型加密）:
+- model_name:    选择要加密的模型
+- key:          加密密钥
+- save_name:    加密后的模型名称
+- machine_codes: 授权机器码列表（每行一个）
+
+LmcqRuntimeModelDecryption（运行时模型解密）:
+- model_name:    选择加密的模型
+- key:          解密密钥
+~~~
+提供实时模型加解密和特定机器授权功能。模型只能在授权的机器上加载。
+PS: 加密模型在内存中进行加载，所以不会在本地保存完整模型，只能用于工作流当中，最大程度保护完整模型不被传播(只能使用LmcqRuntimeModelDecryption去加载加密模型，其余无效)
+
+### 运行时LoRA保护
+~~~
+LmcqRuntimeLoraEncryption（运行时LoRA加密）:
+- lora_name:     选择要加密的LoRA
+- key:          加密密钥
+- save_name:    加密后的LoRA名称
+- machine_codes: 授权机器码列表
+
+LmcqRuntimeLoraDecryption（运行时LoRA解密）:
+- model:         输入模型
+- clip:         输入CLIP
+- lora_name:    选择加密的LoRA
+- key:          解密密钥
+- strength_model: 模型的LoRA强度
+- strength_clip:  CLIP的LoRA强度
+~~~
+使用机器特定授权和实时加载功能来保护LoRA模型。
+PS: 加密模型在内存中进行加载，所以不会在本地保存完整模型，只能用于工作流当中，最大程度保护完整模型不被传播(只能使用LmcqRuntimeLoraDecryption去加载加密模型，其余无效)
+
+### 运行时工作流保护
+~~~
+LmcqRuntimeWorkflowEncryption（运行时工作流加密）:
+- workflow_file: 选择要加密的工作流
+- key:          加密密钥
+- save_name:    加密后的工作流名称（.lcwf格式）
+- machine_codes: 授权机器码列表
+
+LmcqRuntimeWorkflowDecryption（运行时工作流解密）:
+- workflow_file: 选择加密的工作流
+- key:          解密密钥
+- save_name:    解密后的工作流名称
+~~~
+通过机器特定授权保护工作流。加密的工作流以.lcwf格式保存，只能在授权机器上解密。
+
+注意：运行时保护系统确保受保护的资源只能在特定授权的机器上使用，比单纯的密码保护提供更强的安全性。
+
+## 参与贡献!
+
+Zebord
