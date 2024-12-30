@@ -6,6 +6,18 @@
 ComfyUI small node toolkit, this toolkit is mainly to update some practical small nodes, to make a contribution to the comfyui ecosystem,
 PS: "LMCQ" is the abbreviation of the team name
 
+## Update log 2024-12-29 (Introducing a multi-layer protection mechanism in the core code of the runtime protection system package!)
+Because the encryption and decryption node code of the previous version was displayed in plain text, it was easy for reverse engineers to crack it, thus failing to ensure the security of the model. Now the core encryption and decryption code uniformly introduces a multi-layer protection mechanism
+
+- Multi-layer protection scheme
+   - AST-level code obfuscation
+   - PyArmor basic encryption
+   - Variable name/function name obfuscation
+   - Interference code injection
+   - String obfuscation
+
+Now all the security node codes in the project are highly encrypted with a multi-layer protection scheme, which greatly increases the difficulty of cracking by reverse engineers, thereby ensuring the security of the model.
+
 ## image
 
 1. LmcqImageSaver: mainly provides watermarks and metadata information for the generated image files
@@ -196,19 +208,7 @@ Protects workflows with machine-specific authorization. Encrypted workflows are 
 
 Note: The runtime protection system ensures that protected assets can only be used on specifically authorized machines, providing stronger security than password-only protection.
 
-## Update log 2024-12-29 (Introducing a multi-layer protection mechanism in the core code of the runtime protection system package!)
-Because the encryption and decryption node code of the previous version was displayed in plain text, it was easy for reverse engineers to crack it, thus failing to ensure the security of the model. Now the core encryption and decryption code uniformly introduces a multi-layer protection mechanism
-
-- Multi-layer protection scheme
-   - AST-level code obfuscation
-   - PyArmor basic encryption
-   - Variable name/function name obfuscation
-   - Interference code injection
-   - String obfuscation
-
-Now all the security node codes in the project are highly encrypted with a multi-layer protection scheme, which greatly increases the difficulty of cracking by reverse engineers, thereby ensuring the security of the model.
-
-## TODO (next plan)
+## 2024-12-29 TODO (next plan)
 
 What we are preparing now:
 Developing a complete authentication service system dedicated to more efficiently improving the functional security of ComfyUi security nodes. The core functional logic of all nodes will be provided by a third-party authentication service system to maximize the security of models and workflows (and provide more fancy gameplay such as: encryption model usage limit, encryption model usage time limit, encryption model usage device limit, etc.), providing creators with a safer creative environment, so stay tuned! ! !
