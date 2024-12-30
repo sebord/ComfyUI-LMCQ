@@ -3,3 +3,5 @@ torch>=1.7.0
 numpy>=1.19.0
 cryptography>=41.0.0
 pyarmor>=9.0.6
+pathlib>=1.0.1
+typing>=3.7.4.3
