@@ -10,6 +10,7 @@ import folder_paths
 import requests
 from server import PromptServer
 import comfy.sd
+from .nf4_model import OPS
 
 # 导入运行时保护节点
 from .runtime.model_protection import (

@@ -6,6 +6,24 @@
 ComfyUI small node toolkit, this toolkit is mainly to update some practical small nodes, to make a contribution to the comfyui ecosystem,
 PS: "LMCQ" is the abbreviation of the team name
 
+## Update Log 2025-01-08 (White-box Encryption & Enhanced Security!)
+
+We have implemented a sophisticated white-box encryption system and enhanced our security mechanisms:
+
+### White-box Encryption
+- Dynamic T-box and S-box generation
+- Complex key expansion algorithm
+- Multiple round transformations
+- Memory protection mechanism
+
+### Enhanced Security Features
+- ✓ Secure key storage
+- ✓ Anti-debugging protection
+- ✓ Memory tampering detection
+- ✓ Runtime integrity verification
+
+The new white-box encryption implementation makes it extremely difficult to extract encryption keys even with full access to the code. Combined with our existing multi-layer protection scheme, this provides state-of-the-art security for your models and workflows.
+
 ## Update log 2024-12-29 (Introducing a multi-layer protection mechanism in the core code of the runtime protection system package!)
 Because the encryption and decryption node code of the previous version was displayed in plain text, it was easy for reverse engineers to crack it, thus failing to ensure the security of the model. Now the core encryption and decryption code uniformly introduces a multi-layer protection mechanism
 
