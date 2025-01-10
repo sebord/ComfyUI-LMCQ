@@ -6,6 +6,26 @@
 ComfyUI small node toolkit, this toolkit is mainly to update some practical small nodes, to make a contribution to the comfyui ecosystem,
 PS: "LMCQ" is the abbreviation of the team name
 
+
+## 更新日志 2025-01-10 （全新的代码加密方案！）
+
+为了进一步提升代码安全性，我们完全重构了加密系统：
+
+### 新的加密方案
+- ✓ 基于 AES-GCM 的高强度加密
+- ✓ 动态密钥生成与管理
+- ✓ 源代码级别的加密保护
+- ✓ 跨平台兼容性支持
+
+### 安全性提升
+- 移除了可能存在安全隐患的 PyArmor 依赖
+- 实现了更安全的内存数据处理
+- 增强了对张量数据的保护
+- 改进了机器码验证机制
+
+新的加密方案不仅提供了更强的安全保护，还显著提升了跨平台兼容性和运行时性能。结合已有的多层保护机制，为模型、LoRA和工作流提供了更可靠的安全保障。
+
+
 ## Update Log 2025-01-08 (White-box Encryption & Enhanced Security!)
 
 We have implemented a sophisticated white-box encryption system and enhanced our security mechanisms:
@@ -23,18 +43,6 @@ We have implemented a sophisticated white-box encryption system and enhanced our
 - ✓ Runtime integrity verification
 
 The new white-box encryption implementation makes it extremely difficult to extract encryption keys even with full access to the code. Combined with our existing multi-layer protection scheme, this provides state-of-the-art security for your models and workflows.
-
-## Update log 2024-12-29 (Introducing a multi-layer protection mechanism in the core code of the runtime protection system package!)
-Because the encryption and decryption node code of the previous version was displayed in plain text, it was easy for reverse engineers to crack it, thus failing to ensure the security of the model. Now the core encryption and decryption code uniformly introduces a multi-layer protection mechanism
-
-- Multi-layer protection scheme
-   - AST-level code obfuscation
-   - PyArmor basic encryption
-   - Variable name/function name obfuscation
-   - Interference code injection
-   - String obfuscation
-
-Now all the security node codes in the project are highly encrypted with a multi-layer protection scheme, which greatly increases the difficulty of cracking by reverse engineers, thereby ensuring the security of the model.
 
 ## image
 

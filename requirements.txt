@@ -1,5 +1,6 @@
 bitsandbytes>=0.43.0
-torch>=1.7.0
+torch>=2.0.0,<3.0.0
 numpy>=1.19.0
 cryptography>=41.0.0
-pyarmor>=9.0.6
+pycryptodome>=3.15.0
+safetensors>=0.3.1

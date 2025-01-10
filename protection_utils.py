@@ -193,7 +193,6 @@ class ProtectionBase:
     def encrypt_data(cls, data_path, key):
         """加密数据"""
         cls._security.check_security()
-        # 原有的加密逻辑保持不变
         if not os.path.exists(data_path):
             raise ValueError(f"文件不存在: {data_path}")
             
@@ -209,13 +208,48 @@ class ProtectionBase:
             params = cls._generate_key_params(key)
             
             # 加密张量数据
-            encrypted_dict = {}
-            for k, tensor in data_dict.items():
+            def encrypt_tensor(tensor):
                 if torch.is_tensor(tensor):
-                    encrypted_dict[k] = tensor * params['scale'] + params['bias']
-                else:
-                    encrypted_dict[k] = tensor
+                    return tensor * params['scale'] + params['bias']
+                return tensor
             
+            def process_dict(d):
+                result = {}
+                if isinstance(d, dict):
+                    # 处理字典
+                    for k, v in d.items():
+                        if isinstance(v, dict):
+                            # 递归处理嵌套字典
+                            processed = process_dict(v)
+                            # 如果处理后的字典包含张量，则展平
+                            if any(torch.is_tensor(tv) for tv in processed.values()):
+                                for sub_k, sub_v in processed.items():
+                                    if torch.is_tensor(sub_v):
+                                        result[f"{k}.{sub_k}"] = encrypt_tensor(sub_v)
+                            else:
+                                result[k] = processed
+                        elif torch.is_tensor(v):
+                            result[k] = encrypt_tensor(v)
+                        else:
+                            # 忽略非张量数据
+                            continue
+                elif torch.is_tensor(d):
+                    return encrypt_tensor(d)
+                return result
+            
+            # 处理整个字典
+            encrypted_dict = process_dict(data_dict)
+            
+            # 验证结果
+            if not encrypted_dict:
+                raise ValueError("没有找到可加密的张量数据")
+            
+            # 确保所有值都是张量
+            for k, v in list(encrypted_dict.items()):
+                if not torch.is_tensor(v):
+                    del encrypted_dict[k]
+            
+            print(f"已处理 {len(encrypted_dict)} 个张量")
             return encrypted_dict
             
         except Exception as e:

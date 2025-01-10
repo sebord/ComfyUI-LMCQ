@@ -1,6 +1,6 @@
 {
-    "creator_key": "",
-    "creator_secret": "",
-    "user_key": "",
-    "user_secret": ""
+    "creator_key": "LMCQ_CREATOR_abc123",
+    "creator_secret": "creator_secret_abc123xyz789",
+    "user_key": "LMCQ_USER_def456",
+    "user_secret": "user_secret_def456uvw789"
 }

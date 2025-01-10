@@ -1,3 +1,4 @@
+
 import os
 import json
 import base64
@@ -10,24 +11,17 @@ import folder_paths
 import requests
 from server import PromptServer
 import comfy.sd
+import torch
 from .nf4_model import OPS
 
 # 导入运行时保护节点
-from .runtime.model_protection import (
-    LmcqRuntimeModelEncryption,
-    LmcqRuntimeModelDecryption
-)
-from .runtime.lora_protection import (
-    LmcqRuntimeLoraEncryption,
-    LmcqRuntimeLoraDecryption
-)
-from .runtime.workflow_protection import (
-    LmcqRuntimeWorkflowEncryption,
-    LmcqRuntimeWorkflowDecryption,
-    LmcqGetMachineCode
-)
+from .runtime.model_protection import LmcqRuntimeModelEncryption, LmcqRuntimeModelDecryption
+from .runtime.lora_protection import LmcqRuntimeLoraEncryption, LmcqRuntimeLoraDecryption
+from .runtime.workflow_protection import LmcqRuntimeWorkflowEncryption, LmcqRuntimeWorkflowDecryption, LmcqGetMachineCode
+from .runtime.api_model_protection import LmcqAuthModelEncryption, LmcqAuthModelDecryption
+from .runtime.api_lora_protection import LmcqAuthLoraEncryption, LmcqAuthLoraDecryption
+from .runtime.api_workflow_protection import LmcqAuthWorkflowEncryption, LmcqAuthWorkflowDecryption
 
-# 基础节点类定义
 class LmcqImageSaver:
     def __init__(self):
         self.output_dir = folder_paths.get_output_directory()
@@ -610,6 +604,53 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LmcqRuntimeLoraDecryption": "Lmcq Runtime Lora Decryption",
     "LmcqRuntimeWorkflowEncryption": "Lmcq Runtime Workflow Encryption",
     "LmcqRuntimeWorkflowDecryption": "Lmcq Runtime Workflow Decryption",
+    "LmcqGetMachineCode": "Lmcq Get Machine Code"
+}
+
+__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
+
+
+
+# 节点映射
+NODE_CLASS_MAPPINGS = {
+    "LmcqImageSaver": LmcqImageSaver,
+    "LmcqImageSaverTransit": LmcqImageSaverTransit,
+    "LmcqImageSaverWeb": LmcqImageSaverWeb,
+    "LmcqLoadFluxNF4Checkpoint": LmcqLoadFluxNF4Checkpoint,
+    "LmcqInputValidator": LmcqInputValidator,
+    "LmcqRuntimeModelEncryption": LmcqRuntimeModelEncryption,
+    "LmcqRuntimeModelDecryption": LmcqRuntimeModelDecryption,
+    "LmcqRuntimeLoraEncryption": LmcqRuntimeLoraEncryption,
+    "LmcqRuntimeLoraDecryption": LmcqRuntimeLoraDecryption,
+    "LmcqRuntimeWorkflowEncryption": LmcqRuntimeWorkflowEncryption,
+    "LmcqRuntimeWorkflowDecryption": LmcqRuntimeWorkflowDecryption,
+    "LmcqAuthModelEncryption": LmcqAuthModelEncryption,
+    "LmcqAuthModelDecryption": LmcqAuthModelDecryption,
+    "LmcqAuthLoraEncryption": LmcqAuthLoraEncryption,
+    "LmcqAuthLoraDecryption": LmcqAuthLoraDecryption,
+    "LmcqAuthWorkflowEncryption": LmcqAuthWorkflowEncryption,
+    "LmcqAuthWorkflowDecryption": LmcqAuthWorkflowDecryption,
+    "LmcqGetMachineCode": LmcqGetMachineCode
+}
+
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "LmcqImageSaver": "Lmcq Image Saver",
+    "LmcqImageSaverTransit": "Lmcq Image Saver Transit",
+    "LmcqImageSaverWeb": "Lmcq Image Saver Web",
+    "LmcqLoadFluxNF4Checkpoint": "Lmcq Load Flux NF4 Checkpoint",
+    "LmcqInputValidator": "Lmcq Input Validator",
+    "LmcqRuntimeModelEncryption": "Lmcq Runtime Model Encryption",
+    "LmcqRuntimeModelDecryption": "Lmcq Runtime Model Decryption",
+    "LmcqRuntimeLoraEncryption": "Lmcq Runtime Lora Encryption",
+    "LmcqRuntimeLoraDecryption": "Lmcq Runtime Lora Decryption",
+    "LmcqRuntimeWorkflowEncryption": "Lmcq Runtime Workflow Encryption",
+    "LmcqRuntimeWorkflowDecryption": "Lmcq Runtime Workflow Decryption",
+    "LmcqAuthModelEncryption": "Lmcq Auth Model Encryption",
+    "LmcqAuthModelDecryption": "Lmcq Auth Model Decryption",
+    "LmcqAuthLoraEncryption": "Lmcq Auth LoRA Encryption",
+    "LmcqAuthLoraDecryption": "Lmcq Auth LoRA Decryption",
+    "LmcqAuthWorkflowEncryption": "Lmcq Auth Workflow Encryption",
+    "LmcqAuthWorkflowDecryption": "Lmcq Auth Workflow Decryption",
     "LmcqGetMachineCode": "Lmcq Get Machine Code"
 }
 
