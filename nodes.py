@@ -576,6 +576,42 @@ class LmcqInputValidator:
             return (not input_text.isdigit(),)
 
 
+class LmcqNumberSliders5:
+    @classmethod
+    def INPUT_TYPES(s):
+        base_config = {
+            "default": 1.0,
+            "min": 0.0,
+            "max": 200.0,
+            "step": 0.1,
+            "display": "slider"
+        }
+        
+        return {
+            "required": {
+                "value1": ("FLOAT", base_config.copy()),
+                "value2": ("FLOAT", base_config.copy()),
+                "value3": ("FLOAT", base_config.copy()),
+                "value4": ("FLOAT", base_config.copy()),
+                "value5": ("FLOAT", base_config.copy()),
+                "name1": ("STRING", {"default": "数字1"}),
+                "name2": ("STRING", {"default": "数字2"}),
+                "name3": ("STRING", {"default": "数字3"}),
+                "name4": ("STRING", {"default": "数字4"}),
+                "name5": ("STRING", {"default": "数字5"}),
+            }
+        }
+
+    RETURN_TYPES = ("FLOAT", "FLOAT", "FLOAT", "FLOAT", "FLOAT")
+    RETURN_NAMES = ("value_1", "value_2", "value_3", "value_4", "value_5")
+    FUNCTION = "process_values"
+    CATEGORY = "Lmcq/Utils"
+
+    def process_values(self, value1, value2, value3, value4, value5, 
+                      name1, name2, name3, name4, name5):
+        return (value1, value2, value3, value4, value5)        
+
+
 # 节点映射
 NODE_CLASS_MAPPINGS = {
     "LmcqImageSaver": LmcqImageSaver,
@@ -589,7 +625,8 @@ NODE_CLASS_MAPPINGS = {
     "LmcqRuntimeLoraDecryption": LmcqRuntimeLoraDecryption,
     "LmcqRuntimeWorkflowEncryption": LmcqRuntimeWorkflowEncryption,
     "LmcqRuntimeWorkflowDecryption": LmcqRuntimeWorkflowDecryption,
-    "LmcqGetMachineCode": LmcqGetMachineCode
+    "LmcqGetMachineCode": LmcqGetMachineCode,
+    "LmcqNumberSliders5": LmcqNumberSliders5
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -604,7 +641,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LmcqRuntimeLoraDecryption": "Lmcq Runtime Lora Decryption",
     "LmcqRuntimeWorkflowEncryption": "Lmcq Runtime Workflow Encryption",
     "LmcqRuntimeWorkflowDecryption": "Lmcq Runtime Workflow Decryption",
-    "LmcqGetMachineCode": "Lmcq Get Machine Code"
+    "LmcqGetMachineCode": "Lmcq Get Machine Code",
+    "LmcqNumberSliders5": "Lmcq Number Sliders (5)"
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
