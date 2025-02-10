@@ -6,25 +6,48 @@
 ComfyUI small node toolkit, this toolkit is mainly to update some practical small nodes, to make a contribution to the comfyui ecosystem,
 PS: "LMCQ" is the abbreviation of the team name
 
+## Update Log 2025-02-10 (DeepSeek model integration!)
 
-## 更新日志 2025-01-10 （全新的代码加密方案！）
+### Deepseek series nodes
+![deepseek_nodes.png](deepseek_nodes.png) <!-- You need to add a screenshot and replace the actual file name -->
 
-为了进一步提升代码安全性，我们完全重构了加密系统：
+#### LmcqDeepLoader
+~~~text
+Function details:
+model_name: Select the locally downloaded Deepseek large language model (the default model is read in the /models/deepseek/ directory)
+~~~
+Model download address:
+1B model: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1B/tree/main
+7B model: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-7B/tree/main
+14B model: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B/tree/main
+32B model: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B/tree/main
+70B model: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-70B/tree/main
 
-### 新的加密方案
-- ✓ 基于 AES-GCM 的高强度加密
-- ✓ 动态密钥生成与管理
-- ✓ 源代码级别的加密保护
-- ✓ 跨平台兼容性支持
+Please download all the corresponding files for each model, use its name as the folder name, put all the files into the folder, and put it in the /models/deepseek/ directory: such as /models/deepseek/DeepSeek-R1-Distill-Qwen-7B/
 
-### 安全性提升
-- 移除了可能存在安全隐患的 PyArmor 依赖
-- 实现了更安全的内存数据处理
-- 增强了对张量数据的保护
-- 改进了机器码验证机制
+#### LmcqDeepGen
+~~~text
+Function details:
+system_prompt: system-level command setting (define model behavior rules)
+user_prompt: user input prompt words
 
-新的加密方案不仅提供了更强的安全保护，还显著提升了跨平台兼容性和运行时性能。结合已有的多层保护机制，为模型、LoRA和工作流提供了更可靠的安全保障。
+seed: random seed (0-9999999)
+max_tokens: maximum number of generated tokens (0-unlimited)
+temperature: Generation temperature (0-2, the higher the value, the more random)
+top_k: Number of candidate words (0-100)
+top_p: Core sampling probability (0-1)
 
+Output port:
+raw_output: Raw output including the thinking process
+clean_output: Clean output after cleaning
+~~~
+
+Feature description:
+1. Support setting model behavior rules through system_prompt
+2. Automatically clean the <think>thinking process</think> tag of the model output
+3. Provide dual output ports to meet the needs of different scenarios
+4. Fully support Deepseek model parameter system
+~~~
 
 ## Update Log 2025-01-08 (White-box Encryption & Enhanced Security!)
 
@@ -43,6 +66,18 @@ We have implemented a sophisticated white-box encryption system and enhanced our
 - ✓ Runtime integrity verification
 
 The new white-box encryption implementation makes it extremely difficult to extract encryption keys even with full access to the code. Combined with our existing multi-layer protection scheme, this provides state-of-the-art security for your models and workflows.
+
+## Update log 2024-12-29 (Introducing a multi-layer protection mechanism in the core code of the runtime protection system package!)
+Because the encryption and decryption node code of the previous version was displayed in plain text, it was easy for reverse engineers to crack it, thus failing to ensure the security of the model. Now the core encryption and decryption code uniformly introduces a multi-layer protection mechanism
+
+- Multi-layer protection scheme
+   - AST-level code obfuscation
+   - PyArmor basic encryption
+   - Variable name/function name obfuscation
+   - Interference code injection
+   - String obfuscation
+
+Now all the security node codes in the project are highly encrypted with a multi-layer protection scheme, which greatly increases the difficulty of cracking by reverse engineers, thereby ensuring the security of the model.
 
 ## image
 

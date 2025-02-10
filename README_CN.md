@@ -5,24 +5,50 @@
 ComfyUI小节点工具包，本工具包主要是更新一些实用的小节点，为comfyui生态做一份贡献，
 PS：“LMCQ”是团队名称的简写
 
+## 更新日志 2025-02-10 (DeepSeek模型集成！)
 
-## 更新日志 2025-01-10 （全新的代码加密方案！）
+### Deepseek系列节点
+![deepseek_nodes.png](deepseek_nodes.png)  <!-- 需要您补充截图后替换实际文件名 -->
 
-为了进一步提升代码安全性，我们完全重构了加密系统：
+#### LmcqDeepLoader
+~~~text
+功能详解：
+model_name: 选择本地下载的Deepseek大语言模型（默认读取/models/deepseek/目录下的模型）
+~~~
+模型下载地址:
+1B 模型: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1B/tree/main
+7B 模型: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-7B/tree/main
+14B 模型: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B/tree/main
+32B 模型: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B/tree/main
+70B 模型: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-70B/tree/main
 
-### 新的加密方案
-- ✓ 基于 AES-GCM 的高强度加密
-- ✓ 动态密钥生成与管理
-- ✓ 源代码级别的加密保护
-- ✓ 跨平台兼容性支持
+每个模型请下载对应的所有文件，按照其名称作为文件夹名称，将所有文件放进该文件夹，并放在/models/deepseek/目录下：如/models/deepseek/DeepSeek-R1-Distill-Qwen-7B/
 
-### 安全性提升
-- 移除了可能存在安全隐患的 PyArmor 依赖
-- 实现了更安全的内存数据处理
-- 增强了对张量数据的保护
-- 改进了机器码验证机制
+#### LmcqDeepGen
+~~~text
+功能详解：
+system_prompt:   系统级指令设定(定义模型行为规则)
+user_prompt:     用户输入提示词
 
-新的加密方案不仅提供了更强的安全保护，还显著提升了跨平台兼容性和运行时性能。结合已有的多层保护机制，为模型、LoRA和工作流提供了更可靠的安全保障。
+seed:            随机种子(0-9999999)
+max_tokens:      最大生成token数(0-无限制)
+temperature:     生成温度(0-2，值越高越随机)
+top_k:           候选词数量(0-100)
+top_p:           核采样概率(0-1)
+
+输出端口：
+raw_output:  包含思考过程的原始输出
+clean_output: 清理后的纯净输出
+~~~
+
+特性说明：
+1. 支持通过system_prompt设置模型行为规则
+2. 自动清理模型输出的<think>思考过程</think>标签
+3. 提供双输出端口满足不同场景需求
+4. 完整支持Deepseek模型参数体系
+~~~
+
+
 
 ## 更新日志 2025-01-08 （白盒加密与安全增强！）
 
@@ -42,7 +68,16 @@ PS：“LMCQ”是团队名称的简写
 
 新的白盒加密实现使得即使获得完整代码也极难提取加密密钥。结合我们现有的多层保护方案，为您的模型和工作流提供了最先进的安全保护。
 
+## 更新日志 2024-12-29 （运行时保护系统套装核心代码引入多层保护机制！）
+由于之前版本加解密节点代码明文显示，容易被逆向工程师轻松破解从而无法保障模型的安全保障问题，现在核心加解密代码统一引入多层保护机制
 
+
+- 多层保护方案
+   - AST级别代码混淆
+   - PyArmor基础加密
+   - 变量名/函数名混淆
+   - 干扰代码注入
+   - 字符串混淆
 
 现在项目中安全节点代码全部经过多层保护方案高强度加密，很大程度地抬高了逆向工程师的破解难度，从而保障了模型的安全保障问题
 

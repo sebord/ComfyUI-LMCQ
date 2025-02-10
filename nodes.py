@@ -12,7 +12,14 @@ import requests
 from server import PromptServer
 import comfy.sd
 import torch
+from pathlib import Path
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from comfy import model_management, model_patcher
+import re
 from .nf4_model import OPS
+
+# DeepSeek相关导入
+from .deepseek_util import set_seed  # 新增：导入set_seed函数
 
 # 导入运行时保护节点
 from .runtime.model_protection import LmcqRuntimeModelEncryption, LmcqRuntimeModelDecryption
@@ -21,6 +28,11 @@ from .runtime.workflow_protection import LmcqRuntimeWorkflowEncryption, LmcqRunt
 from .runtime.api_model_protection import LmcqAuthModelEncryption, LmcqAuthModelDecryption
 from .runtime.api_lora_protection import LmcqAuthLoraEncryption, LmcqAuthLoraDecryption
 from .runtime.api_workflow_protection import LmcqAuthWorkflowEncryption, LmcqAuthWorkflowDecryption
+from .runtime.flux_protection import LmcqAuthFluxEncryption, LmcqAuthFluxDecryption  # 新增Flux相关节点导入
+
+# 设置deepseek模型目录
+deep_model_folder_path = Path(folder_paths.models_dir) / 'deepseek'
+deep_model_folder_path.mkdir(parents=True, exist_ok=True)
 
 class LmcqImageSaver:
     def __init__(self):
@@ -576,40 +588,125 @@ class LmcqInputValidator:
             return (not input_text.isdigit(),)
 
 
-class LmcqNumberSliders5:
-    @classmethod
-    def INPUT_TYPES(s):
-        base_config = {
-            "default": 1.0,
-            "min": 0.0,
-            "max": 200.0,
-            "step": 0.1,
-            "display": "slider"
-        }
+class DeepModel:
+    def __init__(self, model, patcher, tokenizer=None, processor=None):
+        self.model = model
+        self.tokenizer = tokenizer
+        self.processor = processor
+        self.patcher = patcher
         
+        # hook modelClass.device setter
+        def set_value(self, new_value):
+            pass
+        model.__class__.device = property(fget=model.__class__.device.fget, fset=set_value)
+
+
+class LmcqDeepLoader:
+    @classmethod
+    def INPUT_TYPES(cls):
+        model_lst = []
+        for folder in deep_model_folder_path.iterdir():
+            if folder.is_dir():
+                config_file = folder / 'config.json'
+                if config_file.is_file():
+                    relative_path = str(folder.relative_to(deep_model_folder_path))
+                    model_lst.append(relative_path)
         return {
             "required": {
-                "value1": ("FLOAT", base_config.copy()),
-                "value2": ("FLOAT", base_config.copy()),
-                "value3": ("FLOAT", base_config.copy()),
-                "value4": ("FLOAT", base_config.copy()),
-                "value5": ("FLOAT", base_config.copy()),
-                "name1": ("STRING", {"default": "数字1"}),
-                "name2": ("STRING", {"default": "数字2"}),
-                "name3": ("STRING", {"default": "数字3"}),
-                "name4": ("STRING", {"default": "数字4"}),
-                "name5": ("STRING", {"default": "数字5"}),
+                "model_name": (model_lst, {}),
             }
         }
+        
+    RETURN_TYPES = ("DEEP_MODEL", )
+    RETURN_NAMES = ("model", )
+    FUNCTION = "load_model"
+    CATEGORY = "Lmcq/deepseek"
 
-    RETURN_TYPES = ("FLOAT", "FLOAT", "FLOAT", "FLOAT", "FLOAT")
-    RETURN_NAMES = ("value_1", "value_2", "value_3", "value_4", "value_5")
-    FUNCTION = "process_values"
-    CATEGORY = "Lmcq/Utils"
+    def load_model(self, model_name):
+        #offload_device = torch.device('cpu')
+        offload_device = torch.device('cuda')
+        load_device = model_management.get_torch_device()
+        mymod=deep_model_folder_path / model_name
+        model = AutoModelForCausalLM.from_pretrained(
+            mymod,
+            #deep_model_folder_path / model_name, 
+            device_map=offload_device, 
+            torch_dtype="auto", 
+        )
+        tokenizer = AutoTokenizer.from_pretrained(mymod)
+        patcher = model_patcher.ModelPatcher(model, load_device=load_device, offload_device=offload_device)
+        #patcher = model_patcher.ModelPatcher(model, load_device=load_device offload_device=NoneNone) #, offload_device=offload_device)
+        #patcher = model_patcher.ModelPatcher(model, load_device=load_device offload_device=NoneNone) #, offload_device=offload_device)
+    
+        
+        return (DeepModel(model, patcher, tokenizer=tokenizer), )
 
-    def process_values(self, value1, value2, value3, value4, value5, 
-                      name1, name2, name3, name4, name5):
-        return (value1, value2, value3, value4, value5)        
+
+class LmcqDeepGen:
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        DEFAULT_INSTRUCT = ''
+        return {
+            "required": {
+                "deep_model": ("DEEP_MODEL",),
+                "system_prompt": ("STRING", {
+                    "default": "", 
+                    "placeholder": "在此定义deepseek前置规则",
+                    "multiline": True
+                }),
+                "user_prompt": ("STRING", {"default": "", "multiline": True, "placeholder": "在此输入用户提示词"}),
+                "seed": ("INT", {"default": 888, "min": 0, "max": 0xffffffffffffffff}),
+                "max_tokens": ("INT", {"default": 500, "min": 0, "max": 0xffffffffffffffff}),
+                "temperature": ("FLOAT", {"default": 1, "min": 0, "max": 2}),
+                "top_k": ("INT", {"default": 50, "min": 0, "max": 101}),
+                "top_p": ("FLOAT", {"default": 1, "min": 0, "max": 1}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("raw_output", "clean_output")
+    FUNCTION = "deep_xgen"
+    CATEGORY = "Lmcq/deepseek"
+
+
+    def deep_xgen(self, deep_model, system_prompt, user_prompt, seed=0, temperature=1.0, max_tokens=500, top_k=50, top_p=1.0, **kwargs):
+        set_seed(seed % 9999999)
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt.format(**kwargs)},
+        ]
+        tokenizer = deep_model.tokenizer
+        model = deep_model.model
+        patcher = deep_model.patcher
+        model_management.load_model_gpu(patcher)
+        text = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+        model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+
+        generated_ids = model.generate(
+            **model_inputs,
+            max_new_tokens=max_tokens,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+        )
+        generated_ids = [
+            output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+        ]
+
+        response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        
+        def clean_think_tags(text):
+            cleaned = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+            return re.sub(r'\n\s*\n', '\n', cleaned).strip()
+        
+        clean_response = clean_think_tags(response)
+        
+        return (response, clean_response)
 
 
 # 节点映射
@@ -626,7 +723,8 @@ NODE_CLASS_MAPPINGS = {
     "LmcqRuntimeWorkflowEncryption": LmcqRuntimeWorkflowEncryption,
     "LmcqRuntimeWorkflowDecryption": LmcqRuntimeWorkflowDecryption,
     "LmcqGetMachineCode": LmcqGetMachineCode,
-    "LmcqNumberSliders5": LmcqNumberSliders5
+    "LmcqDeepLoader": LmcqDeepLoader,
+    "LmcqDeepGen": LmcqDeepGen,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -642,7 +740,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LmcqRuntimeWorkflowEncryption": "Lmcq Runtime Workflow Encryption",
     "LmcqRuntimeWorkflowDecryption": "Lmcq Runtime Workflow Decryption",
     "LmcqGetMachineCode": "Lmcq Get Machine Code",
-    "LmcqNumberSliders5": "Lmcq Number Sliders (5)"
+    "LmcqDeepLoader": "Lmcq DeepLoader",
+    "LmcqDeepGen": "Lmcq DeepGen",
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
@@ -668,7 +767,11 @@ NODE_CLASS_MAPPINGS = {
     "LmcqAuthLoraDecryption": LmcqAuthLoraDecryption,
     "LmcqAuthWorkflowEncryption": LmcqAuthWorkflowEncryption,
     "LmcqAuthWorkflowDecryption": LmcqAuthWorkflowDecryption,
-    "LmcqGetMachineCode": LmcqGetMachineCode
+    "LmcqGetMachineCode": LmcqGetMachineCode,
+    "LmcqAuthFluxEncryption": LmcqAuthFluxEncryption,  # 新增
+    "LmcqAuthFluxDecryption": LmcqAuthFluxDecryption,  # 新增
+    "LmcqDeepLoader": LmcqDeepLoader,
+    "LmcqDeepGen": LmcqDeepGen
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -689,7 +792,11 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LmcqAuthLoraDecryption": "Lmcq Auth LoRA Decryption",
     "LmcqAuthWorkflowEncryption": "Lmcq Auth Workflow Encryption",
     "LmcqAuthWorkflowDecryption": "Lmcq Auth Workflow Decryption",
-    "LmcqGetMachineCode": "Lmcq Get Machine Code"
+    "LmcqGetMachineCode": "Lmcq Get Machine Code",
+    "LmcqAuthFluxEncryption": "Lmcq Auth Flux Encryption",  # 新增
+    "LmcqAuthFluxDecryption": "Lmcq Auth Flux Decryption",  # 新增
+    "LmcqDeepLoader": "Lmcq Deep Loader",
+    "LmcqDeepGen": "Lmcq Deep Gen"
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
