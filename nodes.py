@@ -701,7 +701,9 @@ class LmcqDeepGen:
         response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
         
         def clean_think_tags(text):
-            cleaned = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+            # 修改后的正则表达式，匹配从开头到第一个</think>之前的所有内容（包括</think>）
+            cleaned = re.sub(r'^.*?</think>', '', text, flags=re.DOTALL)
+            # 处理多余空行
             return re.sub(r'\n\s*\n', '\n', cleaned).strip()
         
         clean_response = clean_think_tags(response)
