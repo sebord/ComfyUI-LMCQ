@@ -6,6 +6,52 @@
 ComfyUI small node toolkit, this toolkit is mainly to update some practical small nodes, to make a contribution to the comfyui ecosystem,
 PS: "LMCQ" is the abbreviation of the team name
 
+## Update Log 2025-03-04 (Authentication Server Encryption System!)
+
+We have launched a new authentication server encryption system that provides stronger and more flexible protection mechanisms for model creators:
+
+### Authentication Server Encryption System
+- ✓ HTTP-based Authentication Server Verification
+- ✓ Dynamic Key Distribution Mechanism
+- ✓ Real-time Authorization Validation
+- ✓ Online Management Platform
+
+### Key Features
+1. **Model Usage Management**
+   - Dynamically adjust authorized machine codes
+   - Flexible model usage period settings
+   - Customizable usage count limits
+   - Real-time usage statistics
+
+2. **Online Management Platform**
+   - URL: http://1.95.3.202/
+   - One-click management of all encrypted models
+   - Real-time model usage monitoring
+   - Quick authorization updates
+
+3. **Supported Model Types**
+   - Checkpoint Model Encryption (LmcqAuthModelEncryption/LmcqAuthModelDecryption)
+   - LoRA Model Encryption (LmcqAuthLoraEncryption/LmcqAuthLoraDecryption)
+   - Workflow Encryption (LmcqAuthWorkflowEncryption/LmcqAuthWorkflowDecryption)
+   - Flux Model Encryption (LmcqAuthFluxEncryption/LmcqAuthFluxDecryption)
+
+4. **Security Features**
+   - Real-time Machine Code Validation
+   - Timestamp Anti-replay Protection
+   - Encrypted Communication Protection
+
+### Usage Process
+1. Register an account on the authentication server
+2. Obtain creator key (auth_key) and key secret (auth_secret)
+3. Configure key information in auth_key.json
+4. Use corresponding encryption nodes for model encryption
+5. Log in to the management platform for permission management
+
+### Important Notes
+- Keep the key information in auth_key.json secure
+- Regularly change keys to enhance security
+- Update authorization information through the management platform promptly
+
 ## Update Log 2025-02-10 (DeepSeek model integration!)
 
 ### Deepseek series nodes

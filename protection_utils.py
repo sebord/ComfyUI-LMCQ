@@ -160,29 +160,35 @@ class ProtectionBase:
         return machine_code in authorized_codes
     
     @classmethod
-    def _generate_key_params(cls, key):
-        """根据密钥生成加密参数
+    def _generate_key_params(cls, key, tensor_name=None):
+        """根据密钥和张量名生成加密参数
         Args:
             key: 加密密钥
+            tensor_name: 张量名称（可选）
         Returns:
             dict: 包含 scale 和 bias 的参数字典
         """
         if not key:
             raise ValueError("密钥不能为空")
             
+        # 组合密钥和张量名
+        combined = key
+        if tensor_name:
+            combined = key + tensor_name
+            
         # 使用密钥生成哈希
-        key_hash = hashlib.sha256(key.encode()).digest()
+        key_hash = hashlib.sha256(combined.encode()).digest()
         
         # 使用哈希值生成浮点数参数
         import struct
         float_values = [
             struct.unpack('f', key_hash[i:i+4])[0] 
-            for i in range(0, 8, 4)
+            for i in range(0, min(len(key_hash), 16), 4)
         ]
         
-        # 生成缩放和偏移参数
-        scale = abs(float_values[0]) % 0.5 + 1.0  # 1.0-1.5 范围
-        bias = float_values[1] % 0.1  # 小偏移量
+        # 生成缩放和偏移参数 - 使用更明显的范围
+        scale = abs(float_values[0] % 0.5) + 1.5  # 1.5-2.0 范围
+        bias = (float_values[1] % 1.0) - 0.5  # -0.5 到 0.5 范围
         
         return {
             'scale': scale,
@@ -191,7 +197,13 @@ class ProtectionBase:
     
     @classmethod
     def encrypt_data(cls, data_path, key):
-        """加密数据"""
+        """加密数据
+        Args:
+            data_path: 数据文件路径
+            key: 加密密钥
+        Returns:
+            dict: 加密后的数据字典
+        """
         cls._security.check_security()
         if not os.path.exists(data_path):
             raise ValueError(f"文件不存在: {data_path}")
@@ -204,56 +216,87 @@ class ProtectionBase:
             else:
                 data_dict = torch.load(data_path)
             
-            # 生成加密参数
-            params = cls._generate_key_params(key)
+            # 生成基础加密参数
+            base_params = cls._generate_key_params(key)
+            scale = base_params['scale'] * 1.5  # 使用更明显的缩放
+            bias = base_params['bias'] * 3.0    # 使用更明显的偏移
             
-            # 加密张量数据
-            def encrypt_tensor(tensor):
+            print(f"使用加密参数: scale={scale}, bias={bias}")
+            
+            # 加密张量数据 - 使用简单但有效的线性变换
+            encrypted_dict = {}
+            for k, tensor in data_dict.items():
                 if torch.is_tensor(tensor):
-                    return tensor * params['scale'] + params['bias']
-                return tensor
+                    # 保存原始数据类型
+                    original_dtype = tensor.dtype
+                    
+                    # 转换为float32进行操作以避免精度问题
+                    tensor_f32 = tensor.to(torch.float32)
+                    
+                    # 应用线性变换加密
+                    encrypted = tensor_f32 * scale + bias
+                    
+                    # 转回原始数据类型
+                    encrypted_dict[k] = encrypted.to(original_dtype)
+                else:
+                    encrypted_dict[k] = tensor
             
-            def process_dict(d):
-                result = {}
-                if isinstance(d, dict):
-                    # 处理字典
-                    for k, v in d.items():
-                        if isinstance(v, dict):
-                            # 递归处理嵌套字典
-                            processed = process_dict(v)
-                            # 如果处理后的字典包含张量，则展平
-                            if any(torch.is_tensor(tv) for tv in processed.values()):
-                                for sub_k, sub_v in processed.items():
-                                    if torch.is_tensor(sub_v):
-                                        result[f"{k}.{sub_k}"] = encrypt_tensor(sub_v)
-                            else:
-                                result[k] = processed
-                        elif torch.is_tensor(v):
-                            result[k] = encrypt_tensor(v)
-                        else:
-                            # 忽略非张量数据
-                            continue
-                elif torch.is_tensor(d):
-                    return encrypt_tensor(d)
-                return result
+            # 添加加密标记
+            encrypted_dict["_encryption_version"] = torch.tensor([1.0])
             
-            # 处理整个字典
-            encrypted_dict = process_dict(data_dict)
-            
-            # 验证结果
-            if not encrypted_dict:
-                raise ValueError("没有找到可加密的张量数据")
-            
-            # 确保所有值都是张量
-            for k, v in list(encrypted_dict.items()):
-                if not torch.is_tensor(v):
-                    del encrypted_dict[k]
-            
-            print(f"已处理 {len(encrypted_dict)} 个张量")
             return encrypted_dict
             
         except Exception as e:
+            import traceback
+            print(f"加密失败详细信息: {traceback.format_exc()}")
             raise ValueError(f"加密失败: {str(e)}")
+    
+    @classmethod
+    def decrypt_data(cls, encrypted_dict, key):
+        """解密数据
+        Args:
+            encrypted_dict: 加密后的数据字典
+            key: 解密密钥
+        Returns:
+            dict: 解密后的数据字典
+        """
+        cls._security.check_security()
+        
+        try:
+            # 生成基础解密参数
+            base_params = cls._generate_key_params(key)
+            scale = base_params['scale'] * 1.5  # 与加密时相同
+            bias = base_params['bias'] * 3.0    # 与加密时相同
+            
+            print(f"使用解密参数: scale={scale}, bias={bias}")
+            
+            # 解密每个张量
+            decrypted_dict = {}
+            for k, tensor in encrypted_dict.items():
+                if k == "_encryption_version":
+                    continue
+                    
+                if torch.is_tensor(tensor):
+                    # 保存原始数据类型
+                    original_dtype = tensor.dtype
+                    
+                    # 转换为float32进行操作以避免精度问题
+                    tensor_f32 = tensor.to(torch.float32)
+                    
+                    # 应用线性变换解密
+                    decrypted = (tensor_f32 - bias) / scale
+                    
+                    # 转回原始数据类型
+                    decrypted_dict[k] = decrypted.to(original_dtype)
+                else:
+                    decrypted_dict[k] = tensor
+            
+            return decrypted_dict
+            
+        except Exception as e:
+            import traceback
+            print(f"解密失败详细信息: {traceback.format_exc()}")
+            raise ValueError(f"解密失败: {str(e)}")
     
     @classmethod
     def create_metadata(cls, **kwargs):
@@ -283,35 +326,19 @@ class ProtectionBase:
         return meta_encoded
     
     @classmethod
-    def process_machine_codes(cls, machine_codes_str):
-        """处理机器码列表
+    def process_machine_codes(cls, machine_codes_text):
+        """处理机器码文本，转换为列表
         Args:
-            machine_codes_str: 多行机器码字符串
+            machine_codes_text: 机器码文本，每行一个
         Returns:
-            list: 处理后的机器码列表
+            list: 机器码列表
         """
-        if not machine_codes_str.strip():
-            raise ValueError("机器码不能为空")
+        if not machine_codes_text.strip():
+            return []
             
-        # 分割并清理机器码
-        codes = [
-            code.strip() 
-            for code in machine_codes_str.split('\n')
-            if code.strip()
-        ]
-        
-        # 验证每个机器码
-        valid_codes = []
-        for code in codes:
-            if len(code) == 32 and all(c in '0123456789abcdef' for c in code.lower()):
-                valid_codes.append(code)
-            else:
-                print(f"警告: 忽略无效的机器码 {code}")
-                
-        if not valid_codes:
-            raise ValueError("没有有效的机器码")
-            
-        return valid_codes
+        # 按行分割，并移除空行
+        codes = [line.strip() for line in machine_codes_text.split('\n') if line.strip()]
+        return codes
     
     @classmethod
     def _hash_key(cls, key):

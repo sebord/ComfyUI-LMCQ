@@ -3,7 +3,53 @@
 ## 介绍
 
 ComfyUI小节点工具包，本工具包主要是更新一些实用的小节点，为comfyui生态做一份贡献，
-PS：“LMCQ”是团队名称的简写
+PS："LMCQ"是团队名称的简写
+
+## 更新日志 2025-03-04 (认证服务器加密系统！)
+
+我们推出了全新的认证服务器加密系统，为模型创作者提供更强大和灵活的保护机制：
+
+### 认证服务器加密系统
+- ✓ 基于HTTP的认证服务器验证
+- ✓ 动态密钥分发机制
+- ✓ 实时授权验证
+- ✓ 在线管理平台
+
+### 主要特性
+1. **模型使用管理**
+   - 动态调整授权机器码列表
+   - 灵活设置模型使用期限
+   - 自定义模型可用次数
+   - 实时查看使用统计
+
+2. **在线管理平台**
+   - 网址：http://1.95.3.202/
+   - 一键管理所有加密模型
+   - 实时监控模型使用情况
+   - 快速更新授权配置
+
+3. **支持模型类型**
+   - Checkpoint模型加密 (LmcqAuthModelEncryption/LmcqAuthModelDecryption)
+   - LoRA模型加密 (LmcqAuthLoraEncryption/LmcqAuthLoraDecryption)
+   - 工作流加密 (LmcqAuthWorkflowEncryption/LmcqAuthWorkflowDecryption)
+   - Flux模型加密 (LmcqAuthFluxEncryption/LmcqAuthFluxDecryption)
+
+4. **安全特性**
+   - 实时机器码验证
+   - 时间戳防重放攻击
+   - 加密通信保护
+
+### 使用流程
+1. 在认证服务器注册账号
+2. 获取创作者密钥(auth_key)和密钥密文(auth_secret)
+3. 将密钥信息配置到auth_key.json
+4. 使用对应的加密节点进行模型加密
+5. 登录管理平台进行权限管理
+
+### 注意事项
+- 请妥善保管auth_key.json中的密钥信息
+- 建议定期更换密钥提升安全性
+- 及时通过管理平台更新授权信息
 
 ## 更新日志 2025-02-10 (DeepSeek模型集成！)
 
@@ -94,7 +140,7 @@ clean_output: 清理后的纯净输出
 功能详解
 
 filename_prefix：    文件名前缀
-format：             文件格式，目前支持‘png、jpg、webp’三种
+format：             文件格式，目前支持'png、jpg、webp'三种
 quality：            文件压缩率，数值越小，压缩率越高，对应的文件大小越小，如果要使用该功能请在文件格式中选择jpg格式
 apply_watermark：    是否开启水印功能
 watermark_text：     水印文本内容
