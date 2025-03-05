@@ -28,7 +28,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {}
 
 class EncryptedLoader:
     # 加密密钥
-    KEY = b'\x10\t\x90%\x17"\x9b\xdb\xb0!\x0e\x0fXc\xe3\xbc\x9bT\x01o\x03\xe4\xdek\x83K1\x98^\xde6w'
+    KEY = b'*\xdd(\x93\x8b3J\x12`\x01\x9a\xf0\x98\xb8\x96_q\xc8mJ1\x10.\x8dY\t\x1bB\x15\x81o\xb1'
     
     def __init__(self, spec):
         self.spec = spec

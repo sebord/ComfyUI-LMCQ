@@ -157,6 +157,10 @@ class ProtectionBase:
             return False
             
         authorized_codes = meta_data.get('machine_codes', [])
+        # 如果授权机器码列表为空，则跳过机器码验证，直接返回True
+        if not authorized_codes:
+            return True
+            
         return machine_code in authorized_codes
     
     @classmethod
