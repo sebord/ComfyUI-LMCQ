@@ -24,7 +24,7 @@ We have launched a new authentication server encryption system that provides str
    - Real-time usage statistics
 
 2. **Online Management Platform**
-   - URL: [http://1.95.3.202/](https://modelkey.cn/#/login)
+   - URL: https://modelkey.cn/#/login
    - One-click management of all encrypted models
    - Real-time model usage monitoring
    - Quick authorization updates
