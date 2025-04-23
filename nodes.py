@@ -29,6 +29,7 @@ from .runtime.api_model_protection import LmcqAuthModelEncryption, LmcqAuthModel
 from .runtime.api_lora_protection import LmcqAuthLoraEncryption, LmcqAuthLoraDecryption
 from .runtime.api_workflow_protection import LmcqAuthWorkflowEncryption, LmcqAuthWorkflowDecryption
 from .runtime.flux_protection import LmcqAuthFluxEncryption, LmcqAuthFluxDecryption  # 新增Flux相关节点导入
+from .runtime.code_protection import LmcqCodeEncryption, LmcqCodeDecryptionLoader # <-- 新增代码保护节点导入
 
 # 设置deepseek模型目录
 deep_model_folder_path = Path(folder_paths.models_dir) / 'deepseek'
@@ -727,6 +728,8 @@ NODE_CLASS_MAPPINGS = {
     "LmcqGetMachineCode": LmcqGetMachineCode,
     "LmcqDeepLoader": LmcqDeepLoader,
     "LmcqDeepGen": LmcqDeepGen,
+    "LmcqCodeEncryption": LmcqCodeEncryption,
+    "LmcqCodeDecryptionLoader": LmcqCodeDecryptionLoader,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -744,6 +747,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LmcqGetMachineCode": "Lmcq Get Machine Code",
     "LmcqDeepLoader": "Lmcq DeepLoader",
     "LmcqDeepGen": "Lmcq DeepGen",
+    "LmcqCodeEncryption": "Lmcq 代码加密保护",
+    "LmcqCodeDecryptionLoader": "Lmcq 代码解密加载测试",
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
@@ -773,7 +778,9 @@ NODE_CLASS_MAPPINGS = {
     "LmcqAuthFluxEncryption": LmcqAuthFluxEncryption,  # 新增
     "LmcqAuthFluxDecryption": LmcqAuthFluxDecryption,  # 新增
     "LmcqDeepLoader": LmcqDeepLoader,
-    "LmcqDeepGen": LmcqDeepGen
+    "LmcqDeepGen": LmcqDeepGen,
+    "LmcqCodeEncryption": LmcqCodeEncryption, # <-- 新增映射
+    "LmcqCodeDecryptionLoader": LmcqCodeDecryptionLoader # <-- 新增映射
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -798,7 +805,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LmcqAuthFluxEncryption": "Lmcq Auth Flux Encryption",  # 新增
     "LmcqAuthFluxDecryption": "Lmcq Auth Flux Decryption",  # 新增
     "LmcqDeepLoader": "Lmcq Deep Loader",
-    "LmcqDeepGen": "Lmcq Deep Gen"
+    "LmcqDeepGen": "Lmcq Deep Gen",
+    "LmcqCodeEncryption": "Lmcq Code Encryption", # <-- 新增显示名称
+    "LmcqCodeDecryptionLoader": "Lmcq Code Decryption Loader" # <-- 新增显示名称
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']

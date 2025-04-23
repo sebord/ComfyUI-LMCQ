@@ -6,6 +6,30 @@
 ComfyUI small node toolkit, this toolkit is mainly to update some practical small nodes, to make a contribution to the comfyui ecosystem,
 PS: "LMCQ" is the abbreviation of the team name
 
+## Update Log 2025-04-23 (Code Protection Node!)
+
+Introducing the new Code Protection nodes designed to encrypt your Python source code files for ComfyUI custom nodes:
+
+![code_protection.png](code_protection.png) <!-- Placeholder: Add screenshot later -->
+
+### Code Protection Nodes
+- **LmcqCodeEncryption**: Encrypts a `.py` file, generating a `.pye` encrypted file and an optional loader stub (`.py`).
+- **LmcqCodeDecryptionLoader**: Loads and executes the encrypted `.pye` file using the loader stub.
+
+### Key Features
+- **Protect Your Logic**: Encrypt your custom node's source code to prevent easy reverse engineering or unauthorized modification.
+- **Encryption Levels**: Choose between "Basic", "Advanced", and "Supreme" encryption levels for varying degrees of security.
+- **Optional Obfuscation**: Apply simple variable name obfuscation for an extra layer of protection (Note: May impact complex code, use with caution).
+- **Custom Import Hook**: Generates a loader stub (`.py` file with the original name) that automatically handles the decryption and loading process when the module is imported.
+- **Keep Original Option**: Decide whether to keep the original `.py` file after encryption.
+
+### How It Works
+1. Use `LmcqCodeEncryption` to select your `.py` file, choose an encryption level, and optionally enable obfuscation and loader stub generation.
+2. The node outputs an encrypted `.pye` file and potentially overwrites the original `.py` with a loader stub (if `add_custom_import_hook` is True and `keep_original` is False).
+3. When Python imports the loader stub `.py` file, it automatically finds the corresponding `.pye` file, decrypts it using the embedded key, and executes the code in memory.
+
+This system allows you to distribute your custom nodes in a protected format while maintaining ease of use for end-users.
+
 ## Update Log 2025-03-04 (Authentication Server Encryption System!)
 
 We have launched a new authentication server encryption system that provides stronger and more flexible protection mechanisms for model creators:
@@ -24,7 +48,7 @@ We have launched a new authentication server encryption system that provides str
    - Real-time usage statistics
 
 2. **Online Management Platform**
-   - URL: https://modelkey.cn/#/login
+   - URL: http://1.95.3.202/
    - One-click management of all encrypted models
    - Real-time model usage monitoring
    - Quick authorization updates
