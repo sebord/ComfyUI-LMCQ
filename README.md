@@ -23,10 +23,10 @@ Introducing the new Code Protection nodes designed to encrypt your Python source
 - **Custom Import Hook**: Generates a loader stub (`.py` file with the original name) that automatically handles the decryption and loading process when the module is imported.
 - **Keep Original Option**: Decide whether to keep the original `.py` file after encryption.
 
-### How It Works
+### Usage
 1. Use `LmcqCodeEncryption` to select your `.py` file, choose an encryption level, and optionally enable obfuscation and loader stub generation.
-2. The node outputs an encrypted `.pye` file and potentially overwrites the original `.py` with a loader stub (if `add_custom_import_hook` is True and `keep_original` is False).
-3. When Python imports the loader stub `.py` file, it automatically finds the corresponding `.pye` file, decrypts it using the embedded key, and executes the code in memory.
+2. If `add_custom_import_hook` is enabled, the loader stub (`.py` file) will be generated (potentially overwriting the original if `keep_original` is false). Place this loader stub and the corresponding `.pye` file together in your custom node's directory.
+3. The `LmcqCodeDecryptionLoader` node can be used to test loading the encrypted file, but typically, Python's import mechanism will handle loading automatically via the loader stub.
 
 This system allows you to distribute your custom nodes in a protected format while maintaining ease of use for end-users.
 
