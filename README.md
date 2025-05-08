@@ -6,10 +6,6 @@
 ComfyUI small node toolkit, this toolkit is mainly to update some practical small nodes, to make a contribution to the comfyui ecosystem,
 PS: "LMCQ" is the abbreviation of the team name
 
-## Important Note for Users of the Encrypted/Distributed Version
-
-This README describes the functionality of the ComfyUI-LMCQ plugin, which has its core logic protected through advanced compilation techniques for security.
-
 ## Changelog May 8, 2025 (Encrypted Node Groups & Core Security Enhancements!)
 
 We are excited to announce two major advancements in ComfyUI-LMCQ in terms of enhanced functionality and core security:
