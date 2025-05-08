@@ -10,61 +10,65 @@ PS: "LMCQ" is the abbreviation of the team name
 
 This README describes the functionality of the ComfyUI-LMCQ plugin, which has its core logic protected through advanced compilation techniques for security.
 
-**Crucial Runtime Setup Steps:**
+## Changelog May 8, 2025 (Encrypted Node Groups & Core Security Enhancements!)
 
-The `runtime` directory in this protected version has a new structure. It contains subdirectories corresponding to different Python versions (e.g., `310` for Python 3.10, `311` for Python 3.11, etc.), each holding the compiled core files for that specific Python environment.
+We are excited to announce two major advancements in ComfyUI-LMCQ in terms of enhanced functionality and core security:
 
-To ensure the plugin works correctly with your local ComfyUI setup, you **MUST** perform the following steps after downloading or cloning this project:
+### 1. Encrypted Node Groups (Cloud Security Hardening)
 
-1.  **Identify your local Python version** used by your ComfyUI instance (e.g., Python 3.10, 3.11, 3.12, 3.13).
-2.  Navigate to the `runtime` directory within this plugin's folder (`ComfyUI-LMCQ`).
-3.  You will see subfolders named after Python versions (e.g., `310`, `311`, `312`, `313`). **Locate the subfolder that matches your Python version.**
-4.  **Move all files** from *inside* that specific versioned subfolder (e.g., from `runtime/310/`) directly into the root of the `runtime` directory (i.e., they should become `runtime/some_file.pyd`, etc.).
-5.  After moving the correct files, **delete all the versioned subfolders** (e.g., `310`, `311`, `312`, `313`) and any remaining files within them from the `runtime` directory.
+Introducing **Lmcq Encrypted Node Group** (LmcqGroupNode)! This powerful new node allows you to encapsulate a group of nodes (a subgraph) into a single, securely encrypted unit and manage it through our cloud platform.
 
-**Example:** If your ComfyUI uses Python 3.11:
-   - Go into `ComfyUI-LMCQ/runtime/311/`.
-   - Move all files from `ComfyUI-LMCQ/runtime/311/` to `ComfyUI-LMCQ/runtime/`.
-   - Delete the `ComfyUI-LMCQ/runtime/310/`, `ComfyUI-LMCQ/runtime/311/`, `ComfyUI-LMCQ/runtime/312/`, and `ComfyUI-LMCQ/runtime/313/` folders (and any other versioned folders present).
+![group_node_protection_placeholder.png](group_node_protection_placeholder.png) <!-- TODO: Screenshots of the node group feature will be added later -->
 
-Failure to perform these steps correctly will result in errors when ComfyUI tries to load the plugin, as it will not be able to find the necessary compiled runtime files for your Python environment.
+**Main Features**:
+- **Protect Complex Workflows**: Securely package complex node combinations or proprietary logic into an encrypted module.
+- **Cloud Security**: Encryption keys and authorizations are managed through our secure cloud API, ensuring that only authenticated users can access internal subgraphs.
+- **User-friendly operation**: Once authorized, encrypted node groups function similarly to standard ComfyUI node groups, with their internal complexity always protected.
+- **Secure access**: Authenticate with the cloud service using a user-defined `workflow_identifier` and `password` to enable decryption.
+- **Optional machine binding**: To add an extra layer of security, node groups can be bound to specific machine codes, consistent with the protection mechanism provided by other certified nodes of Lmcq.
 
-## Update Log May 8, 2025 (Encrypted Node Groups & Enhanced Security Core!)
-
-We are excited to announce two major advancements in ComfyUI-LMCQ, focusing on enhanced functionality and core security:
-
-### 1. Encrypted Node Group Functionality (Cloud Secured)
-
-Introducing the **LmcqGroupNode**! This powerful new node allows you to encapsulate a group of nodes (a subgraph) into a single, securely encrypted unit, managed via our cloud platform.
-
-![group_node_protection_placeholder.png](group_node_protection_placeholder.png) <!-- TODO: Add a relevant screenshot for group node functionality -->
-
-**Key Features**:
-- **Protect Complex Workflows**: Securely package intricate node combinations or proprietary logic into a single, encrypted block.
-- **Cloud-Based Security**: Encryption keys and authorizations are managed through our secure cloud API, ensuring only verified users can access the internal subgraph.
-- **User-Friendly Operation**: Once authorized, the encrypted group functions like a standard ComfyUI node group, with its internal complexity remaining protected.
-- **Secure Access**: Utilizes a user-defined `workflow_identifier` and `password` for authentication with the cloud service to enable decryption.
-- **Optional Machine Binding**: For an added layer of security, node groups can be bound to specific machine codes, aligning with the protection offered by other Lmcq authenticated nodes.
-
-**How It Works (Conceptual)**:
+**How ​​it works (conceptually)**:
 1. A subgraph designed in ComfyUI is prepared for encryption.
-2. This subgraph, along with a chosen password, a unique identifier, and optional machine codes, is registered with the Lmcq cloud service.
-3. The service provides an encrypted representation of the subgraph.
-4. In ComfyUI, the `LmcqGroupNode` uses this encrypted data, the identifier, and password to request decryption from the cloud service upon execution.
-5. If successfully authenticated and authorized, the subgraph is decrypted in memory and functions as intended.
+2. The subgraph is registered with the Lmcq cloud service along with a chosen password, a unique identifier and optional machine code.
+3. The cloud service provides an encrypted representation of the subgraph.
+4. In ComfyUI, `LmcqGroupNode` uses this encrypted data, identifier and password to request decryption from the cloud service at execution time.
+5. If authentication and authorization are successful, the subgraph will be decrypted in memory and run as expected.
 
-This feature empowers creators to share advanced functionalities or pre-configured setups with enhanced control and security, preventing direct exposure of the internal workflow logic.
+**How ​​to use**:
+Select the node you want to encrypt on the ComfyUi page, then right-click on the page, select the "LMCQ-Cloud Encryption Group" option, and fill in the corresponding parameters to encrypt
 
-### 2. Enhanced Core Security through Advanced Compilation
+This feature enables creators to share advanced features or pre-configured settings with enhanced control and security, preventing direct exposure of internal workflow logic.
 
-ComfyUI-LMCQ's core runtime modules now benefit from a significant security upgrade. We have transitioned to an **advanced compilation technique** that transforms our Python source code into a more secure, binary format.
+### 2. Enhanced core security through advanced compilation technology
 
-**Key Improvements**:
-- **Greatly Increased Source Code Protection**: The new compiled format is substantially more resistant to reverse-engineering and decompilation compared to previous protection methods. This robustly safeguards the intellectual property embedded in our core logic.
-- **Enhanced Plugin Integrity**: This security enhancement contributes to a more secure and trustworthy plugin for all users.
-- **Optimized Distribution**: The distributable version of the plugin now includes these securely compiled modules, ensuring that the protected code is what end-users receive.
+The core runtime module of ComfyUI-LMCQ has now been significantly upgraded for security. We have transitioned to an **advanced compilation technology** that converts our Python source code into a more secure binary format.
 
-This fundamental improvement in how we protect our codebase ensures that ComfyUI-LMCQ continues to offer innovative features with a strong emphasis on security and intellectual property protection. End-users will experience these benefits through a more secure plugin environment.
+**Main improvements**:
+- **Greatly enhanced source code protection**: Compared with previous protection methods, the new compilation format is significantly more resistant to reverse engineering and decompilation. This strongly protects the intellectual property embedded in our core logic.
+
+- **Enhanced plugin integrity**: This security enhancement helps provide a safer and more trustworthy plugin for all users.
+- **Optimized Distribution**: The plugin distribution now includes these securely compiled modules, ensuring that end users receive protected code.
+
+This fundamental improvement in the way we protect our codebase ensures that ComfyUI-LMCQ continues to provide innovative features while also paying close attention to security and intellectual property protection. End users will experience these benefits through a more secure plugin environment.
+
+**Pre-requisites for the new version (must read!!!):**
+
+In this protected version, the `runtime` directory has a new structure. It contains subdirectories corresponding to different Python versions (e.g. `310` for Python 3.10, `311` for Python 3.11, etc.), each of which contains the core files compiled for that specific Python environment.
+
+To ensure that the plugin works properly in your local ComfyUI environment, you **must** perform the following steps after downloading or cloning the project:
+
+1. **Determine the version of Python that your local ComfyUI instance is using** (e.g., Python 3.10, 3.11, 3.12, 3.13).
+2. Navigate to the `runtime` directory inside the plugin directory (`ComfyUI-LMCQ`).
+3. You will see subfolders named after the Python version number (e.g., `310`, `311`, `312`, `313`). **Find the subfolder that matches your Python version. **
+4. **Move** all files in that version-specific subfolder (e.g., `runtime/310/`) to the root of the `runtime` directory (i.e., they should become `runtime/some_file.pyd`, etc.).
+5. Once the move is complete, **delete all versioned subfolders** (e.g. `310`, `311`, `312`, `313`) in the `runtime` directory and any remaining files inside them.
+
+**For example:** If your ComfyUI is using Python 3.11:
+- Go into the `ComfyUI-LMCQ/runtime/311/` directory.
+- Move all files inside `ComfyUI-LMCQ/runtime/311/` to the `ComfyUI-LMCQ/runtime/` directory.
+- Delete the `310/`, `311/`, `312/`, and `313/` folders (and any other versioned folders that exist) in the `ComfyUI-LMCQ/runtime/` directory.
+
+Failure to perform these steps correctly will result in errors when ComfyUI is trying to load your plugin because it cannot find the necessary compiled runtime files for your Python environment.
 
 ## Update Log 2025-04-23 (Code Protection Node!)
 
