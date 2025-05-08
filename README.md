@@ -6,6 +6,8 @@
 ComfyUI small node toolkit, this toolkit is mainly to update some practical small nodes, to make a contribution to the comfyui ecosystem,
 PS: "LMCQ" is the abbreviation of the team name
 
+## Cloud encryption platform address: https://modelkey.cn/#/login
+
 ## Changelog May 8, 2025 (Encrypted Node Groups & Core Security Enhancements!)
 
 We are excited to announce two major advancements in ComfyUI-LMCQ in terms of enhanced functionality and core security:
