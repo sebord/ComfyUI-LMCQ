@@ -1,129 +1,58 @@
-
-import os
+# Project initialization
 import sys
-import importlib
-import types
-from pathlib import Path
+import os
 
-# 尝试导入加密库
-try:
-    from Crypto.Cipher import AES
-except ImportError:
-    try:
-        from crypto.Cipher import AES
-    except ImportError:
-        try:
-            from Cryptodome.Cipher import AES
-        except ImportError:
-            raise ImportError(
-                "未找到加密库。请安装 pycryptodome：\n"
-                "pip install pycryptodome\n"
-                "或\n"
-                "pip install pycrypto"
-            )
+# 添加当前目录到 Python 路径
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
 
-# 导出节点映射
-NODE_CLASS_MAPPINGS = {}
-NODE_DISPLAY_NAME_MAPPINGS = {}
+# 定义web目录，使ComfyUI能够加载JavaScript文件
+WEB_DIRECTORY = os.path.join(os.path.dirname(os.path.realpath(__file__)), "dist")
 
-class EncryptedLoader:
-    # 加密密钥
-    KEY = b";\x1e-\xbcbP\x89&\x8dd\n\xb6\x84]C\xd4\n\x1c'T\xc4\xdeP2E\n\xfa\x91\xa4\x99\xa1\xf7"
-    
-    def __init__(self, spec):
-        self.spec = spec
-    
-    def create_module(self, spec):
-        """创建一个新的模块对象"""
-        return None  # 使用默认的模块创建
-        
-    def exec_module(self, module):
-        """执行模块的代码"""
-        try:
-            # 读取加密文件
-            with open(self.spec.origin, 'rb') as f:
-                encrypted_data = f.read()
-                
-            # 验证格式
-            if not encrypted_data.startswith(b'PYE1'):
-                raise ImportError("无效的加密文件格式")
-                
-            # 提取加密数据
-            nonce = encrypted_data[4:20]
-            tag = encrypted_data[20:36]
-            ciphertext = encrypted_data[36:]
-            
-            # 解密
-            cipher = AES.new(self.KEY, AES.MODE_GCM, nonce)
-            try:
-                source_bytes = cipher.decrypt_and_verify(ciphertext, tag)
-                source_code = source_bytes.decode('utf-8')
-                
-                # 编译源代码
-                try:
-                    code = compile(
-                        source_code,
-                        self.spec.origin,
-                        'exec',
-                        dont_inherit=True,
-                        optimize=0
-                    )
-                except Exception as compile_error:
-                    raise ImportError(f"编译代码失败: {str(compile_error)}")
-                
-                # 设置模块属性
-                module.__file__ = self.spec.origin
-                module.__package__ = '.'.join(self.spec.name.split('.')[:-1])
-                module.__loader__ = self
-                module.__spec__ = self.spec
-                
-                # 执行代码
-                try:
-                    exec(code, module.__dict__)
-                except Exception as exec_error:
-                    raise ImportError(f"执行代码失败: {str(exec_error)}")
-                
-            except Exception as decrypt_error:
-                python_version = sys.version_info
-                raise ImportError(
-                    f"解密失败 (Python {python_version.major}.{python_version.minor}.{python_version.micro}): "
-                    f"{str(decrypt_error)}"
-                )
-                
-        except Exception as load_error:
-            raise ImportError(f"加载失败: {str(load_error)}")
+# 导入 nf4_model 中的 OPS
+from .nf4_model import OPS
 
-def install_loader():
-    """安装加密文件加载器"""
-    class EncryptedFinder:
-        def find_spec(self, fullname, path, target=None):
-            if fullname.startswith(__package__ + '.runtime.'):
-                modname = fullname.split('.')[-1]
-                location = str(Path(__file__).parent / 'runtime' / (modname + '.pye'))
-                if os.path.exists(location):
-                    # 创建模块规范
-                    loader = EncryptedLoader(None)  # 临时创建加载器
-                    spec = importlib.machinery.ModuleSpec(
-                        fullname,
-                        loader,
-                        origin=location,
-                        is_package=False
-                    )
-                    loader.spec = spec  # 更新加载器的spec
-                    return spec
-            return None
-    
-    # 注册加载器
-    sys.meta_path.insert(0, EncryptedFinder())
+# 导入加密后的节点
+from .runtime.api_model_protection import LmcqAuthModelEncryption, LmcqAuthModelDecryption
+from .runtime.api_lora_protection import LmcqAuthLoraEncryption, LmcqAuthLoraDecryption
+from .runtime.api_workflow_protection import LmcqAuthWorkflowEncryption, LmcqAuthWorkflowDecryption
+from .runtime.flux_protection import LmcqAuthFluxEncryption, LmcqAuthFluxDecryption
+from .runtime.code_protection import LmcqCodeEncryption, LmcqCodeDecryptionLoader
+# 导入新的群组节点保护
+from .runtime.group_node_protection import LmcqGroupNodes
 
-# 安装加载器
-install_loader()
+# 导入节点映射
+from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
 
-# 导入所有节点
-def init_nodes():
-    from .nodes import NODE_CLASS_MAPPINGS as ncm
-    from .nodes import NODE_DISPLAY_NAME_MAPPINGS as ndm
-    globals()['NODE_CLASS_MAPPINGS'].update(ncm)
-    globals()['NODE_DISPLAY_NAME_MAPPINGS'].update(ndm)
+# 更新节点映射
+NODE_CLASS_MAPPINGS.update({
+    "LmcqAuthModelEncryption": LmcqAuthModelEncryption,
+    "LmcqAuthModelDecryption": LmcqAuthModelDecryption,
+    "LmcqAuthLoraEncryption": LmcqAuthLoraEncryption,
+    "LmcqAuthLoraDecryption": LmcqAuthLoraDecryption,
+    "LmcqAuthWorkflowEncryption": LmcqAuthWorkflowEncryption,
+    "LmcqAuthWorkflowDecryption": LmcqAuthWorkflowDecryption,
+    "LmcqAuthFluxEncryption": LmcqAuthFluxEncryption,
+    "LmcqAuthFluxDecryption": LmcqAuthFluxDecryption,
+    "LmcqCodeEncryption": LmcqCodeEncryption,
+    "LmcqCodeDecryptionLoader": LmcqCodeDecryptionLoader,
+    "LmcqGroupNode": LmcqGroupNodes  # 添加新的群组节点
+})
 
-init_nodes()
+NODE_DISPLAY_NAME_MAPPINGS.update({
+    "LmcqAuthModelEncryption": "Lmcq Auth Model Encryption",
+    "LmcqAuthModelDecryption": "Lmcq Auth Model Decryption",
+    "LmcqAuthLoraEncryption": "Lmcq Auth LoRA Encryption",
+    "LmcqAuthLoraDecryption": "Lmcq Auth LoRA Decryption",
+    "LmcqAuthWorkflowEncryption": "Lmcq Auth Workflow Encryption",
+    "LmcqAuthWorkflowDecryption": "Lmcq Auth Workflow Decryption",
+    "LmcqAuthFluxEncryption": "Lmcq Auth Flux Model Encryption (API)",
+    "LmcqAuthFluxDecryption": "Lmcq Auth Flux Model Decryption (API)",
+    "LmcqCodeEncryption": "Lmcq 代码加密保护",
+    "LmcqCodeDecryptionLoader": "Lmcq 代码解密加载测试",
+    "LmcqGroupNode": "Lmcq 加密节点组" # 添加新的群组节点显示名称
+})
+
+# 导出节点映射和WEB_DIRECTORY
+__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS', 'WEB_DIRECTORY']

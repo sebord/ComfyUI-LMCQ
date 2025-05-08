@@ -6,6 +6,66 @@
 ComfyUI small node toolkit, this toolkit is mainly to update some practical small nodes, to make a contribution to the comfyui ecosystem,
 PS: "LMCQ" is the abbreviation of the team name
 
+## Important Note for Users of the Encrypted/Distributed Version
+
+This README describes the functionality of the ComfyUI-LMCQ plugin, which has its core logic protected through advanced compilation techniques for security.
+
+**Crucial Runtime Setup Steps:**
+
+The `runtime` directory in this protected version has a new structure. It contains subdirectories corresponding to different Python versions (e.g., `310` for Python 3.10, `311` for Python 3.11, etc.), each holding the compiled core files for that specific Python environment.
+
+To ensure the plugin works correctly with your local ComfyUI setup, you **MUST** perform the following steps after downloading or cloning this project:
+
+1.  **Identify your local Python version** used by your ComfyUI instance (e.g., Python 3.10, 3.11, 3.12, 3.13).
+2.  Navigate to the `runtime` directory within this plugin's folder (`ComfyUI-LMCQ`).
+3.  You will see subfolders named after Python versions (e.g., `310`, `311`, `312`, `313`). **Locate the subfolder that matches your Python version.**
+4.  **Move all files** from *inside* that specific versioned subfolder (e.g., from `runtime/310/`) directly into the root of the `runtime` directory (i.e., they should become `runtime/some_file.pyd`, etc.).
+5.  After moving the correct files, **delete all the versioned subfolders** (e.g., `310`, `311`, `312`, `313`) and any remaining files within them from the `runtime` directory.
+
+**Example:** If your ComfyUI uses Python 3.11:
+   - Go into `ComfyUI-LMCQ/runtime/311/`.
+   - Move all files from `ComfyUI-LMCQ/runtime/311/` to `ComfyUI-LMCQ/runtime/`.
+   - Delete the `ComfyUI-LMCQ/runtime/310/`, `ComfyUI-LMCQ/runtime/311/`, `ComfyUI-LMCQ/runtime/312/`, and `ComfyUI-LMCQ/runtime/313/` folders (and any other versioned folders present).
+
+Failure to perform these steps correctly will result in errors when ComfyUI tries to load the plugin, as it will not be able to find the necessary compiled runtime files for your Python environment.
+
+## Update Log May 8, 2025 (Encrypted Node Groups & Enhanced Security Core!)
+
+We are excited to announce two major advancements in ComfyUI-LMCQ, focusing on enhanced functionality and core security:
+
+### 1. Encrypted Node Group Functionality (Cloud Secured)
+
+Introducing the **LmcqGroupNode**! This powerful new node allows you to encapsulate a group of nodes (a subgraph) into a single, securely encrypted unit, managed via our cloud platform.
+
+![group_node_protection_placeholder.png](group_node_protection_placeholder.png) <!-- TODO: Add a relevant screenshot for group node functionality -->
+
+**Key Features**:
+- **Protect Complex Workflows**: Securely package intricate node combinations or proprietary logic into a single, encrypted block.
+- **Cloud-Based Security**: Encryption keys and authorizations are managed through our secure cloud API, ensuring only verified users can access the internal subgraph.
+- **User-Friendly Operation**: Once authorized, the encrypted group functions like a standard ComfyUI node group, with its internal complexity remaining protected.
+- **Secure Access**: Utilizes a user-defined `workflow_identifier` and `password` for authentication with the cloud service to enable decryption.
+- **Optional Machine Binding**: For an added layer of security, node groups can be bound to specific machine codes, aligning with the protection offered by other Lmcq authenticated nodes.
+
+**How It Works (Conceptual)**:
+1. A subgraph designed in ComfyUI is prepared for encryption.
+2. This subgraph, along with a chosen password, a unique identifier, and optional machine codes, is registered with the Lmcq cloud service.
+3. The service provides an encrypted representation of the subgraph.
+4. In ComfyUI, the `LmcqGroupNode` uses this encrypted data, the identifier, and password to request decryption from the cloud service upon execution.
+5. If successfully authenticated and authorized, the subgraph is decrypted in memory and functions as intended.
+
+This feature empowers creators to share advanced functionalities or pre-configured setups with enhanced control and security, preventing direct exposure of the internal workflow logic.
+
+### 2. Enhanced Core Security through Advanced Compilation
+
+ComfyUI-LMCQ's core runtime modules now benefit from a significant security upgrade. We have transitioned to an **advanced compilation technique** that transforms our Python source code into a more secure, binary format.
+
+**Key Improvements**:
+- **Greatly Increased Source Code Protection**: The new compiled format is substantially more resistant to reverse-engineering and decompilation compared to previous protection methods. This robustly safeguards the intellectual property embedded in our core logic.
+- **Enhanced Plugin Integrity**: This security enhancement contributes to a more secure and trustworthy plugin for all users.
+- **Optimized Distribution**: The distributable version of the plugin now includes these securely compiled modules, ensuring that the protected code is what end-users receive.
+
+This fundamental improvement in how we protect our codebase ensures that ComfyUI-LMCQ continues to offer innovative features with a strong emphasis on security and intellectual property protection. End-users will experience these benefits through a more secure plugin environment.
+
 ## Update Log 2025-04-23 (Code Protection Node!)
 
 Introducing the new Code Protection nodes designed to encrypt your Python source code files for ComfyUI custom nodes:
@@ -23,10 +83,10 @@ Introducing the new Code Protection nodes designed to encrypt your Python source
 - **Custom Import Hook**: Generates a loader stub (`.py` file with the original name) that automatically handles the decryption and loading process when the module is imported.
 - **Keep Original Option**: Decide whether to keep the original `.py` file after encryption.
 
-### Usage
+### How It Works
 1. Use `LmcqCodeEncryption` to select your `.py` file, choose an encryption level, and optionally enable obfuscation and loader stub generation.
-2. If `add_custom_import_hook` is enabled, the loader stub (`.py` file) will be generated (potentially overwriting the original if `keep_original` is false). Place this loader stub and the corresponding `.pye` file together in your custom node's directory.
-3. The `LmcqCodeDecryptionLoader` node can be used to test loading the encrypted file, but typically, Python's import mechanism will handle loading automatically via the loader stub.
+2. The node outputs an encrypted `.pye` file and potentially overwrites the original `.py` with a loader stub (if `add_custom_import_hook` is True and `keep_original` is False).
+3. When Python imports the loader stub `.py` file, it automatically finds the corresponding `.pye` file, decrypts it using the embedded key, and executes the code in memory.
 
 This system allows you to distribute your custom nodes in a protected format while maintaining ease of use for end-users.
 

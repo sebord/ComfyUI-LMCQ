@@ -1,4 +1,3 @@
-
 import os
 import json
 import base64
@@ -11,30 +10,40 @@ import folder_paths
 import requests
 from server import PromptServer
 import comfy.sd
+from .nf4_model import OPS
+import re
+
+#------------Deepseek相关------------------
+from .deepseek_util  import *
+cpp=print
 import torch
 from pathlib import Path
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoProcessor
+from folder_paths import models_dir
 from comfy import model_management, model_patcher
-import re
-from .nf4_model import OPS
-
-# DeepSeek相关导入
-from .deepseek_util import set_seed  # 新增：导入set_seed函数
-
-# 导入运行时保护节点
-from .runtime.model_protection import LmcqRuntimeModelEncryption, LmcqRuntimeModelDecryption
-from .runtime.lora_protection import LmcqRuntimeLoraEncryption, LmcqRuntimeLoraDecryption
-from .runtime.workflow_protection import LmcqRuntimeWorkflowEncryption, LmcqRuntimeWorkflowDecryption, LmcqGetMachineCode
-from .runtime.api_model_protection import LmcqAuthModelEncryption, LmcqAuthModelDecryption
-from .runtime.api_lora_protection import LmcqAuthLoraEncryption, LmcqAuthLoraDecryption
-from .runtime.api_workflow_protection import LmcqAuthWorkflowEncryption, LmcqAuthWorkflowDecryption
-from .runtime.flux_protection import LmcqAuthFluxEncryption, LmcqAuthFluxDecryption  # 新增Flux相关节点导入
-from .runtime.code_protection import LmcqCodeEncryption, LmcqCodeDecryptionLoader # <-- 新增代码保护节点导入
-
-# 设置deepseek模型目录
-deep_model_folder_path = Path(folder_paths.models_dir) / 'deepseek'
+deep_model_folder_path = Path(models_dir) / 'deepseek'
 deep_model_folder_path.mkdir(parents=True, exist_ok=True)
 
+# 导入运行时保护节点
+from .runtime.model_protection import (
+    LmcqRuntimeModelEncryption,
+    LmcqRuntimeModelDecryption
+)
+from .runtime.lora_protection import (
+    LmcqRuntimeLoraEncryption,
+    LmcqRuntimeLoraDecryption
+)
+from .runtime.workflow_protection import (
+    LmcqRuntimeWorkflowEncryption,
+    LmcqRuntimeWorkflowDecryption,
+    LmcqGetMachineCode
+)
+from .runtime.code_protection import (
+    LmcqCodeEncryption,
+    LmcqCodeDecryptionLoader
+)
+
+# 基础节点类定义
 class LmcqImageSaver:
     def __init__(self):
         self.output_dir = folder_paths.get_output_directory()
@@ -587,7 +596,7 @@ class LmcqInputValidator:
         else:  # is_string
             # 判断是否为字符串 - 只要不是纯数字就是字符串
             return (not input_text.isdigit(),)
-
+        
 
 class DeepModel:
     def __init__(self, model, patcher, tokenizer=None, processor=None):
@@ -600,6 +609,7 @@ class DeepModel:
         def set_value(self, new_value):
             pass
         model.__class__.device = property(fget=model.__class__.device.fget, fset=set_value)
+        
 
 
 class LmcqDeepLoader:
@@ -641,7 +651,6 @@ class LmcqDeepLoader:
     
         
         return (DeepModel(model, patcher, tokenizer=tokenizer), )
-
 
 class LmcqDeepGen:
 
@@ -749,65 +758,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LmcqDeepGen": "Lmcq DeepGen",
     "LmcqCodeEncryption": "Lmcq 代码加密保护",
     "LmcqCodeDecryptionLoader": "Lmcq 代码解密加载测试",
-}
-
-__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
-
-
-
-# 节点映射
-NODE_CLASS_MAPPINGS = {
-    "LmcqImageSaver": LmcqImageSaver,
-    "LmcqImageSaverTransit": LmcqImageSaverTransit,
-    "LmcqImageSaverWeb": LmcqImageSaverWeb,
-    "LmcqLoadFluxNF4Checkpoint": LmcqLoadFluxNF4Checkpoint,
-    "LmcqInputValidator": LmcqInputValidator,
-    "LmcqRuntimeModelEncryption": LmcqRuntimeModelEncryption,
-    "LmcqRuntimeModelDecryption": LmcqRuntimeModelDecryption,
-    "LmcqRuntimeLoraEncryption": LmcqRuntimeLoraEncryption,
-    "LmcqRuntimeLoraDecryption": LmcqRuntimeLoraDecryption,
-    "LmcqRuntimeWorkflowEncryption": LmcqRuntimeWorkflowEncryption,
-    "LmcqRuntimeWorkflowDecryption": LmcqRuntimeWorkflowDecryption,
-    "LmcqAuthModelEncryption": LmcqAuthModelEncryption,
-    "LmcqAuthModelDecryption": LmcqAuthModelDecryption,
-    "LmcqAuthLoraEncryption": LmcqAuthLoraEncryption,
-    "LmcqAuthLoraDecryption": LmcqAuthLoraDecryption,
-    "LmcqAuthWorkflowEncryption": LmcqAuthWorkflowEncryption,
-    "LmcqAuthWorkflowDecryption": LmcqAuthWorkflowDecryption,
-    "LmcqGetMachineCode": LmcqGetMachineCode,
-    "LmcqAuthFluxEncryption": LmcqAuthFluxEncryption,  # 新增
-    "LmcqAuthFluxDecryption": LmcqAuthFluxDecryption,  # 新增
-    "LmcqDeepLoader": LmcqDeepLoader,
-    "LmcqDeepGen": LmcqDeepGen,
-    "LmcqCodeEncryption": LmcqCodeEncryption, # <-- 新增映射
-    "LmcqCodeDecryptionLoader": LmcqCodeDecryptionLoader # <-- 新增映射
-}
-
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "LmcqImageSaver": "Lmcq Image Saver",
-    "LmcqImageSaverTransit": "Lmcq Image Saver Transit",
-    "LmcqImageSaverWeb": "Lmcq Image Saver Web",
-    "LmcqLoadFluxNF4Checkpoint": "Lmcq Load Flux NF4 Checkpoint",
-    "LmcqInputValidator": "Lmcq Input Validator",
-    "LmcqRuntimeModelEncryption": "Lmcq Runtime Model Encryption",
-    "LmcqRuntimeModelDecryption": "Lmcq Runtime Model Decryption",
-    "LmcqRuntimeLoraEncryption": "Lmcq Runtime Lora Encryption",
-    "LmcqRuntimeLoraDecryption": "Lmcq Runtime Lora Decryption",
-    "LmcqRuntimeWorkflowEncryption": "Lmcq Runtime Workflow Encryption",
-    "LmcqRuntimeWorkflowDecryption": "Lmcq Runtime Workflow Decryption",
-    "LmcqAuthModelEncryption": "Lmcq Auth Model Encryption",
-    "LmcqAuthModelDecryption": "Lmcq Auth Model Decryption",
-    "LmcqAuthLoraEncryption": "Lmcq Auth LoRA Encryption",
-    "LmcqAuthLoraDecryption": "Lmcq Auth LoRA Decryption",
-    "LmcqAuthWorkflowEncryption": "Lmcq Auth Workflow Encryption",
-    "LmcqAuthWorkflowDecryption": "Lmcq Auth Workflow Decryption",
-    "LmcqGetMachineCode": "Lmcq Get Machine Code",
-    "LmcqAuthFluxEncryption": "Lmcq Auth Flux Encryption",  # 新增
-    "LmcqAuthFluxDecryption": "Lmcq Auth Flux Decryption",  # 新增
-    "LmcqDeepLoader": "Lmcq Deep Loader",
-    "LmcqDeepGen": "Lmcq Deep Gen",
-    "LmcqCodeEncryption": "Lmcq Code Encryption", # <-- 新增显示名称
-    "LmcqCodeDecryptionLoader": "Lmcq Code Decryption Loader" # <-- 新增显示名称
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
