@@ -8,6 +8,9 @@ PS: "LMCQ" is the abbreviation of the team name
 
 ## Cloud encryption platform address: https://modelkey.cn/#/login
 
+## About the empty server response! All cloud encryption functions require you to register a cloud platform account, obtain the key in the personal center, and then put it in the project directory auth_key.json to use
+![online.png](online.png)
+
 ## Changelog May 8, 2025 (Encrypted Node Groups & Core Security Enhancements!)
 
 We are excited to announce two major advancements in ComfyUI-LMCQ in terms of enhanced functionality and core security:
