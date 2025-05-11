@@ -171,7 +171,8 @@ async function addEncryptedGroupNode(selected, identifier, password, machineCode
     });
 
     const graph = app.graph;
-    const workflow = app.serializeGraph(graph);
+    const promptData = await app.graphToPrompt();
+    const workflow = promptData.workflow;
     const output = {};
     const otherOutput = {};
     let allInputs = [];
