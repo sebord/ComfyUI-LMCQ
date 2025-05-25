@@ -332,7 +332,7 @@ async function addEncryptedGroupNode(selected, identifier, password, machineCode
                 const linkAs = node.outputs[j].links;
                 const name = node.outputs[j].name;
                 const type = node.outputs[j].type;
-                if (!(linkAs && linkAs.length > 0) && allInputs.indexOf(node.id + ':' + j) < 0) {
+                if (allInputs.indexOf(node.id + ':' + j) < 0) {
                     encryptedGroupNode.addOutput(name + "_" + ('outputs' in encryptedGroupNode ? encryptedGroupNode.outputs.length : 0), type);
                     output[key]['outputs'].push([encryptedGroupNode.outputs.length - 1, j]);
                     inputOutputIds[key + ':' + j] = [encryptedGroupNode.outputs.length - 1, j];
