@@ -353,6 +353,10 @@ async function addEncryptedGroupNode(selected, identifier, password, machineCode
                     const origin_slotA = node_data['inputs'][name][1];
                     if ((node_IDA + ':' + origin_slotA) in inputOutputIds) {
                         output[node_IDA]["outputs"].push(inputOutputIds[(node_IDA + ':' + origin_slotA)]);
+                        // 🔧 修复：为已存在的输出建立连接
+                        const existingOutputIndex = inputOutputIds[(node_IDA + ':' + origin_slotA)][0];
+                        node.disconnectInput(j);
+                        encryptedGroupNode.connect(existingOutputIndex, node, j);
                     } else {
                         const inode = graph._nodes_by_id[node_IDA];
                         const { name, type } = inode.outputs[origin_slotA];
