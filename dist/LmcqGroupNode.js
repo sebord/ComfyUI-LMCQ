@@ -8,6 +8,77 @@ const serverName = "lmcq";
 const apiEndpoint = "encipher_group";
 const menuLabel = "LMCQ-云加密组"; // Label remains
 
+// 密码持久化相关函数
+const LMCQ_PASSWORD_STORAGE_KEY = 'lmcq_group_node_passwords';
+
+// 保存密码到localStorage
+function savePasswordToStorage(nodeId, password) {
+    try {
+        const storedPasswords = JSON.parse(localStorage.getItem(LMCQ_PASSWORD_STORAGE_KEY) || '{}');
+        storedPasswords[nodeId] = password;
+        localStorage.setItem(LMCQ_PASSWORD_STORAGE_KEY, JSON.stringify(storedPasswords));
+        console.log(`[LMCQ Password] Saved password for node ${nodeId}`);
+    } catch (error) {
+        console.warn('[LMCQ Password] Failed to save password to localStorage:', error);
+    }
+}
+
+// 从localStorage获取密码
+function getPasswordFromStorage(nodeId) {
+    try {
+        const storedPasswords = JSON.parse(localStorage.getItem(LMCQ_PASSWORD_STORAGE_KEY) || '{}');
+        return storedPasswords[nodeId] || '';
+    } catch (error) {
+        console.warn('[LMCQ Password] Failed to retrieve password from localStorage:', error);
+        return '';
+    }
+}
+
+// 从localStorage删除密码
+function removePasswordFromStorage(nodeId) {
+    try {
+        const storedPasswords = JSON.parse(localStorage.getItem(LMCQ_PASSWORD_STORAGE_KEY) || '{}');
+        delete storedPasswords[nodeId];
+        localStorage.setItem(LMCQ_PASSWORD_STORAGE_KEY, JSON.stringify(storedPasswords));
+        console.log(`[LMCQ Password] Removed password for node ${nodeId}`);
+    } catch (error) {
+        console.warn('[LMCQ Password] Failed to remove password from localStorage:', error);
+    }
+}
+
+// 清理不存在的节点的密码
+function cleanupStoredPasswords() {
+    try {
+        const storedPasswords = JSON.parse(localStorage.getItem(LMCQ_PASSWORD_STORAGE_KEY) || '{}');
+        const currentNodeIds = new Set();
+        
+        // 收集当前所有LmcqGroupNode的ID
+        if (app.graph && app.graph._nodes) {
+            for (const node of app.graph._nodes) {
+                if (node.type === nodeName) {
+                    currentNodeIds.add(String(node.id));
+                }
+            }
+        }
+        
+        // 删除不存在的节点的密码
+        let hasChanges = false;
+        for (const nodeId in storedPasswords) {
+            if (!currentNodeIds.has(nodeId)) {
+                delete storedPasswords[nodeId];
+                hasChanges = true;
+                console.log(`[LMCQ Password] Cleaned up password for removed node ${nodeId}`);
+            }
+        }
+        
+        if (hasChanges) {
+            localStorage.setItem(LMCQ_PASSWORD_STORAGE_KEY, JSON.stringify(storedPasswords));
+        }
+    } catch (error) {
+        console.warn('[LMCQ Password] Failed to cleanup stored passwords:', error);
+    }
+}
+
 // --- Restore Machine Codes and add Identifier to Prompt ---
 function showGroupNodeSettingsPrompt(callback) { // Renamed back
     console.log("[LMCQ Prompt] Entered showGroupNodeSettingsPrompt function (using app.ui.dialog).");
@@ -674,12 +745,82 @@ app.registerExtension({
 
                         this.setDirtyCanvas(true, true); // Trigger redraw after computeSize override
                     } 
+                    // Password widget - 实现密码持久化
+                    const passwordWidget = this.widgets?.find(w => w.name === "password");
+                    if (passwordWidget) {
+                        const nodeId = String(this.id);
+                        
+                        // 恢复保存的密码
+                        const savedPassword = getPasswordFromStorage(nodeId);
+                        if (savedPassword) {
+                            passwordWidget.value = savedPassword;
+                            console.log(`[LMCQ Password] Restored password for node ${nodeId}`);
+                        }
+                        
+                        // 保存原始callback
+                        const originalCallback = passwordWidget.callback;
+                        
+                        // 重写callback以实现自动保存
+                        passwordWidget.callback = (value) => {
+                            // 先调用原始callback
+                            if (originalCallback) {
+                                originalCallback.call(passwordWidget, value);
+                            }
+                            
+                            // 保存密码到localStorage
+                            if (value && value.trim()) {
+                                savePasswordToStorage(nodeId, value);
+                            } else {
+                                // 如果密码为空，从存储中删除
+                                removePasswordFromStorage(nodeId);
+                            }
+                        };
+                        
+                        // 为输入框添加change和blur事件监听（如果有输入框）
+                        if (passwordWidget.inputEl) {
+                            const handlePasswordChange = () => {
+                                const value = passwordWidget.inputEl.value;
+                                passwordWidget.value = value; // 更新widget值
+                                if (value && value.trim()) {
+                                    savePasswordToStorage(nodeId, value);
+                                } else {
+                                    removePasswordFromStorage(nodeId);
+                                }
+                            };
+                            
+                            passwordWidget.inputEl.addEventListener('input', handlePasswordChange);
+                            passwordWidget.inputEl.addEventListener('change', handlePasswordChange);
+                            passwordWidget.inputEl.addEventListener('blur', handlePasswordChange);
+                        } else {
+                            // 如果输入框还没创建，稍后再试
+                            setTimeout(() => {
+                                if (passwordWidget.inputEl) {
+                                    const handlePasswordChange = () => {
+                                        const value = passwordWidget.inputEl.value;
+                                        passwordWidget.value = value;
+                                        if (value && value.trim()) {
+                                            savePasswordToStorage(nodeId, value);
+                                        } else {
+                                            removePasswordFromStorage(nodeId);
+                                        }
+                                    };
+                                    
+                                    passwordWidget.inputEl.addEventListener('input', handlePasswordChange);
+                                    passwordWidget.inputEl.addEventListener('change', handlePasswordChange);
+                                    passwordWidget.inputEl.addEventListener('blur', handlePasswordChange);
+                                }
+                            }, 100);
+                        }
+                        
+                        console.log(`[LMCQ Password] Initialized password persistence for node ${nodeId}`);
+                    }
+                    
                 } catch(e) {
-                     console.error("[LMCQ GroupNode JS onNodeCreated] Error initializing identifier widget:", e);
+                     console.error("[LMCQ GroupNode JS onNodeCreated] Error initializing widgets:", e);
                 }
                 // --- END Initialization ---
 
-                // --- Serialize logic (unchanged) ---
+                // --- Serialize logic - 清空工作流中的密码但保持localStorage ---
                 const originalSerialize = this.serialize;
                 this.serialize = () => {
                     const data = originalSerialize.call(this);
@@ -687,8 +828,14 @@ app.registerExtension({
                          // 查找由 Python 定义创建的密码小部件 (它应该是 widgets 数组中的第一个)
                          const passwordWidgetIndex = this.widgets ? this.widgets.findIndex(w => w.name === "password") : -1;
                          if (passwordWidgetIndex !== -1 && passwordWidgetIndex < data.widgets_values.length) {
-                             console.log(`[LMCQ GroupNode Serialize] Clearing password widget at index ${passwordWidgetIndex}`);
-                              data.widgets_values[passwordWidgetIndex] = "";
+                             // 保存当前密码到localStorage（以防还没保存）
+                             const currentPassword = data.widgets_values[passwordWidgetIndex];
+                             if (currentPassword && currentPassword.trim()) {
+                                 savePasswordToStorage(String(this.id), currentPassword);
+                             }
+                             
+                             console.log(`[LMCQ GroupNode Serialize] Clearing password from workflow at index ${passwordWidgetIndex}, but keeping in localStorage`);
+                             data.widgets_values[passwordWidgetIndex] = "";
                          } else {
                              console.warn("[LMCQ GroupNode Serialize] Could not find password widget index in widgets_values to clear.");
                          }
@@ -729,14 +876,31 @@ app.registerExtension({
                     }
                     // --- 结束端口重建 ---
 
-                    // 清理密码小部件的值 (不变)
+                    // 恢复密码小部件的值 (而不是清空)
                     const passwordWidget = this.widgets ? this.widgets.find(w => w.name === "password") : null;
                     if (passwordWidget) {
-                        passwordWidget.value = "";
+                        const nodeId = String(this.id);
+                        const savedPassword = getPasswordFromStorage(nodeId);
+                        if (savedPassword) {
+                            passwordWidget.value = savedPassword;
+                            console.log(`[LMCQ Password] Restored password in configure for node ${nodeId}`);
+                        }
                      }
                 };
 
                 return r;
+            };
+
+            // 添加onRemoved回调以清理密码存储
+            const onRemoved = nodeType.prototype.onRemoved;
+            nodeType.prototype.onRemoved = function() {
+                const nodeId = String(this.id);
+                removePasswordFromStorage(nodeId);
+                console.log(`[LMCQ Password] Cleaned up password for removed node ${nodeId}`);
+                
+                if (onRemoved) {
+                    return onRemoved.apply(this, arguments);
+                }
             };
 
             // --- Restore onDrawBackground FOR PERSISTENT HIDING --- 
@@ -881,8 +1045,27 @@ const ext = {
     name: id,
     setup() {
         addConvertToEncryptedGroupOptions();
-        console.log(`[LMCQ] 注册了 ${nodeName} 扩展。`);
+        
+        // 清理过期的密码存储
+        setTimeout(() => {
+            cleanupStoredPasswords();
+        }, 1000); // 延迟1秒执行，确保所有节点都已加载
+        
+        console.log(`[LMCQ] 注册了 ${nodeName} 扩展，密码持久化系统已初始化。`);
+        console.log(`[LMCQ] 可在控制台使用 window.clearLmcqPasswords() 清除所有保存的密码`);
     },
+};
+
+// 提供全局函数用于清除所有保存的密码
+window.clearLmcqPasswords = function() {
+    try {
+        localStorage.removeItem(LMCQ_PASSWORD_STORAGE_KEY);
+        console.log('[LMCQ Password] All saved passwords have been cleared');
+        alert('所有保存的LMCQ加密组密码已清除');
+    } catch (error) {
+        console.error('[LMCQ Password] Failed to clear passwords:', error);
+        alert('清除密码失败，请检查控制台');
+    }
 };
 
 app.registerExtension(ext); 

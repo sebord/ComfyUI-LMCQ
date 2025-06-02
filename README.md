@@ -36,10 +36,20 @@ When the system warns of a problem, you can:
 2. **Select All**: Choose "CLIP Text Encoder", "ControlNet", and "K Sampler" together for encryption
 3. **Reselect**: Choose other node combinations that won't cause problems
 
+### 🔐 New Password Persistence Feature
+This is the long-awaited feature! Now you don't have to worry about re-entering passwords after browser refresh:
+
+- **🔄 Auto Save & Restore**: Passwords are automatically saved to browser's local storage when entered in encryption nodes
+- **🌐 Refresh-Proof**: After browser refresh, all created encryption nodes will automatically restore their previously entered passwords
+- **🛡️ Security Protection**: Passwords are only saved locally in browser, not written to workflow files, ensuring no password leakage when sharing workflows
+- **🧹 Smart Cleanup**: Passwords are automatically cleaned when nodes are deleted; system periodically cleans invalid password data
+- **🛠️ Manual Cleanup**: If you need to clear all passwords, enter `window.clearLmcqPasswords()` in browser console
+
 ### 🎉 Much Easier to Use Now
 - Right-click menu directly shows whether encryption is possible, no need to worry about wrong selections
 - If there's a problem with your selection, the menu will be grayed out with a reason
 - No more wire disconnection or infinite loop issues after encryption
+- **Enter password once, remember forever!** No need to repeatedly enter passwords for multiple encryption nodes in complex workflows
 
 In short, the encrypted node group feature is now more stable and user-friendly!
 
