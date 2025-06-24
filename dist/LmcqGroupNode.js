@@ -14,8 +14,14 @@ const LMCQ_PASSWORD_STORAGE_KEY = 'lmcq_group_node_passwords';
 // 保存密码到localStorage
 function savePasswordToStorage(nodeId, password) {
     try {
+        // ✅ 增加输入验证
+        if (!nodeId || typeof nodeId !== 'string' && typeof nodeId !== 'number') {
+            console.warn('[LMCQ Password] Invalid nodeId for password storage:', nodeId);
+            return;
+        }
+        
         const storedPasswords = JSON.parse(localStorage.getItem(LMCQ_PASSWORD_STORAGE_KEY) || '{}');
-        storedPasswords[nodeId] = password;
+        storedPasswords[String(nodeId)] = password;
         localStorage.setItem(LMCQ_PASSWORD_STORAGE_KEY, JSON.stringify(storedPasswords));
         console.log(`[LMCQ Password] Saved password for node ${nodeId}`);
     } catch (error) {
@@ -26,8 +32,14 @@ function savePasswordToStorage(nodeId, password) {
 // 从localStorage获取密码
 function getPasswordFromStorage(nodeId) {
     try {
+        // ✅ 增加输入验证
+        if (!nodeId || typeof nodeId !== 'string' && typeof nodeId !== 'number') {
+            console.warn('[LMCQ Password] Invalid nodeId for password retrieval:', nodeId);
+            return '';
+        }
+        
         const storedPasswords = JSON.parse(localStorage.getItem(LMCQ_PASSWORD_STORAGE_KEY) || '{}');
-        return storedPasswords[nodeId] || '';
+        return storedPasswords[String(nodeId)] || '';
     } catch (error) {
         console.warn('[LMCQ Password] Failed to retrieve password from localStorage:', error);
         return '';
@@ -37,8 +49,14 @@ function getPasswordFromStorage(nodeId) {
 // 从localStorage删除密码
 function removePasswordFromStorage(nodeId) {
     try {
+        // ✅ 增加输入验证
+        if (!nodeId || typeof nodeId !== 'string' && typeof nodeId !== 'number') {
+            console.warn('[LMCQ Password] Invalid nodeId for password removal:', nodeId);
+            return;
+        }
+        
         const storedPasswords = JSON.parse(localStorage.getItem(LMCQ_PASSWORD_STORAGE_KEY) || '{}');
-        delete storedPasswords[nodeId];
+        delete storedPasswords[String(nodeId)];
         localStorage.setItem(LMCQ_PASSWORD_STORAGE_KEY, JSON.stringify(storedPasswords));
         console.log(`[LMCQ Password] Removed password for node ${nodeId}`);
     } catch (error) {
@@ -52,10 +70,15 @@ function cleanupStoredPasswords() {
         const storedPasswords = JSON.parse(localStorage.getItem(LMCQ_PASSWORD_STORAGE_KEY) || '{}');
         const currentNodeIds = new Set();
         
-        // 收集当前所有LmcqGroupNode的ID
-        if (app.graph && app.graph._nodes) {
+        // 收集当前所有LmcqGroupNode的ID - 增加安全检查
+        if (app.graph && app.graph._nodes && Array.isArray(app.graph._nodes)) {
             for (const node of app.graph._nodes) {
-                if (node.type === nodeName) {
+                // ✅ 增加安全检查：确保节点对象存在且有有效的id和type
+                if (node && 
+                    typeof node === 'object' && 
+                    node.id !== undefined && 
+                    node.id !== null && 
+                    node.type === nodeName) {
                     currentNodeIds.add(String(node.id));
                 }
             }
@@ -77,6 +100,20 @@ function cleanupStoredPasswords() {
     } catch (error) {
         console.warn('[LMCQ Password] Failed to cleanup stored passwords:', error);
     }
+}
+
+// ✅ 新增：安全的密码清理函数，专门用于工作流切换后
+function safeCleanupStoredPasswords() {
+    // 检查应用状态是否准备就绪
+    if (!app || !app.graph || !app.canvas) {
+        console.log('[LMCQ Password] App not ready for password cleanup, skipping...');
+        return;
+    }
+    
+    // 延迟执行，确保工作流完全加载完成
+    setTimeout(() => {
+        cleanupStoredPasswords();
+    }, 2000); // 增加延迟时间
 }
 
 // --- Restore Machine Codes and add Identifier to Prompt ---
@@ -159,7 +196,7 @@ function showGroupNodeSettingsPrompt(callback) { // Renamed back
     };
     // console.log("[LMCQ Prompt] Created buttons and attached onclick handlers.");
 
-    // Append elements to the content container 
+    // Append elements to the content container
     // console.log("[LMCQ Prompt] Appending buttons to buttons container...");
     buttons.appendChild(cancelButton);
     buttons.appendChild(confirmButton);
@@ -426,7 +463,7 @@ async function addEncryptedGroupNode(selected, identifier, password, machineCode
                             }
                         }
                     }
-                } else {
+            } else {
                     console.log(`[LMCQ GroupNode JS] Output ${outputKey} has no external connections`);
                 }
             }
@@ -468,7 +505,7 @@ async function addEncryptedGroupNode(selected, identifier, password, machineCode
             // console.log(`[LMCQ GroupNode JS] ✅ Connected external input: ${inputInfo.sourceNodeId}:${inputInfo.sourceSlot} -> group:${inputPortIndex}`);
             
             inputPortIndex++;
-        } catch (error) {
+                            } catch (error) {
             console.error(`[LMCQ GroupNode JS] ❌ Failed to create input port for ${inputKey}:`, error);
         }
     }
@@ -835,7 +872,7 @@ app.registerExtension({
                              }
                              
                              console.log(`[LMCQ GroupNode Serialize] Clearing password from workflow at index ${passwordWidgetIndex}, but keeping in localStorage`);
-                             data.widgets_values[passwordWidgetIndex] = "";
+                              data.widgets_values[passwordWidgetIndex] = "";
                          } else {
                              console.warn("[LMCQ GroupNode Serialize] Could not find password widget index in widgets_values to clear.");
                          }
@@ -876,16 +913,20 @@ app.registerExtension({
                     }
                     // --- 结束端口重建 ---
 
-                    // 恢复密码小部件的值 (而不是清空)
+                    // 恢复密码小部件的值 (而不是清空) - 增加安全检查
                     const passwordWidget = this.widgets ? this.widgets.find(w => w.name === "password") : null;
-                    if (passwordWidget) {
+                    if (passwordWidget && this && this.id !== undefined && this.id !== null) {
                         const nodeId = String(this.id);
                         const savedPassword = getPasswordFromStorage(nodeId);
                         if (savedPassword) {
                             passwordWidget.value = savedPassword;
                             console.log(`[LMCQ Password] Restored password in configure for node ${nodeId}`);
                         }
-                     }
+                    } else if (!passwordWidget) {
+                        console.log('[LMCQ Password] No password widget found for password restoration');
+                    } else {
+                        console.warn('[LMCQ Password] Cannot restore password: node or node.id is undefined');
+                    }
                 };
 
                 return r;
@@ -894,9 +935,14 @@ app.registerExtension({
             // 添加onRemoved回调以清理密码存储
             const onRemoved = nodeType.prototype.onRemoved;
             nodeType.prototype.onRemoved = function() {
-                const nodeId = String(this.id);
-                removePasswordFromStorage(nodeId);
-                console.log(`[LMCQ Password] Cleaned up password for removed node ${nodeId}`);
+                // ✅ 增加安全检查
+                if (this && this.id !== undefined && this.id !== null) {
+                    const nodeId = String(this.id);
+                    removePasswordFromStorage(nodeId);
+                    console.log(`[LMCQ Password] Cleaned up password for removed node ${nodeId}`);
+                } else {
+                    console.warn('[LMCQ Password] Cannot clean up password: node or node.id is undefined');
+                }
                 
                 if (onRemoved) {
                     return onRemoved.apply(this, arguments);
@@ -1046,14 +1092,30 @@ const ext = {
     setup() {
         addConvertToEncryptedGroupOptions();
         
-        // 清理过期的密码存储
-        setTimeout(() => {
-            cleanupStoredPasswords();
-        }, 1000); // 延迟1秒执行，确保所有节点都已加载
+        // ✅ 使用安全的密码清理函数
+        safeCleanupStoredPasswords();
         
         console.log(`[LMCQ] 注册了 ${nodeName} 扩展，密码持久化系统已初始化。`);
         console.log(`[LMCQ] 可在控制台使用 window.clearLmcqPasswords() 清除所有保存的密码`);
     },
+    
+    // ✅ 新增：监听工作流加载事件
+    async loadedGraphNode(node, app) {
+        // 当节点加载完成时，进行安全的密码清理
+        if (node.type === nodeName) {
+            console.log(`[LMCQ Password] ${nodeName} node loaded, scheduling password cleanup...`);
+            // 延迟执行，确保所有节点都已加载
+            setTimeout(() => {
+                safeCleanupStoredPasswords();
+            }, 500);
+        }
+    },
+    
+    // ✅ 新增：工作流改变时的处理
+    async graphChanged(graph) {
+        console.log('[LMCQ Password] Graph changed, scheduling password cleanup...');
+        safeCleanupStoredPasswords();
+    }
 };
 
 // 提供全局函数用于清除所有保存的密码
