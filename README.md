@@ -6,6 +6,12 @@
 ComfyUI small node toolkit, this toolkit is mainly to update some practical small nodes, to make a contribution to the comfyui ecosystem,
 PS: "LMCQ" is the abbreviation of the team name
 
+## Update log July 3, 2025 (Server migration)
+1. Due to the request address adjustment, please update the code and adjust the runtime directory according to your python version
+2. Cloud Linux supports version 3.13!
+Temporary new cloud address: http://47.108.21.185:4660/#/login
+
+
 ## Update Log June 1, 2025 (Fixed the Wire Disconnection Issue After Encryption!)
 
 This update solves the two most reported problems from users: lost connections after encryption and infinite loop errors!
