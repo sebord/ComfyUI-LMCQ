@@ -10,6 +10,7 @@ const menuLabel = "LMCQ-云加密组"; // Label remains
 
 // 密码持久化相关函数
 const LMCQ_PASSWORD_STORAGE_KEY = 'lmcq_group_node_passwords';
+const LMCQ_LICENSE_CODE_STORAGE_KEY = 'lmcq_group_node_license_codes';
 
 // 保存密码到localStorage
 function savePasswordToStorage(nodeId, password) {
@@ -29,6 +30,23 @@ function savePasswordToStorage(nodeId, password) {
     }
 }
 
+// 保存授权码到localStorage
+function saveLicenseCodeToStorage(nodeId, licenseCode) {
+    try {
+        if (!nodeId || typeof nodeId !== 'string' && typeof nodeId !== 'number') {
+            console.warn('[LMCQ LicenseCode] Invalid nodeId for license code storage:', nodeId);
+            return;
+        }
+        
+        const storedLicenseCodes = JSON.parse(localStorage.getItem(LMCQ_LICENSE_CODE_STORAGE_KEY) || '{}');
+        storedLicenseCodes[String(nodeId)] = licenseCode;
+        localStorage.setItem(LMCQ_LICENSE_CODE_STORAGE_KEY, JSON.stringify(storedLicenseCodes));
+        console.log(`[LMCQ LicenseCode] Saved license code for node ${nodeId}`);
+    } catch (error) {
+        console.warn('[LMCQ LicenseCode] Failed to save license code to localStorage:', error);
+    }
+}
+
 // 从localStorage获取密码
 function getPasswordFromStorage(nodeId) {
     try {
@@ -42,6 +60,22 @@ function getPasswordFromStorage(nodeId) {
         return storedPasswords[String(nodeId)] || '';
     } catch (error) {
         console.warn('[LMCQ Password] Failed to retrieve password from localStorage:', error);
+        return '';
+    }
+}
+
+// 从localStorage获取授权码
+function getLicenseCodeFromStorage(nodeId) {
+    try {
+        if (!nodeId || typeof nodeId !== 'string' && typeof nodeId !== 'number') {
+            console.warn('[LMCQ LicenseCode] Invalid nodeId for license code retrieval:', nodeId);
+            return '';
+        }
+        
+        const storedLicenseCodes = JSON.parse(localStorage.getItem(LMCQ_LICENSE_CODE_STORAGE_KEY) || '{}');
+        return storedLicenseCodes[String(nodeId)] || '';
+    } catch (error) {
+        console.warn('[LMCQ LicenseCode] Failed to retrieve license code from localStorage:', error);
         return '';
     }
 }
@@ -64,10 +98,28 @@ function removePasswordFromStorage(nodeId) {
     }
 }
 
+// 从localStorage删除授权码
+function removeLicenseCodeFromStorage(nodeId) {
+    try {
+        if (!nodeId || typeof nodeId !== 'string' && typeof nodeId !== 'number') {
+            console.warn('[LMCQ LicenseCode] Invalid nodeId for license code removal:', nodeId);
+            return;
+        }
+        
+        const storedLicenseCodes = JSON.parse(localStorage.getItem(LMCQ_LICENSE_CODE_STORAGE_KEY) || '{}');
+        delete storedLicenseCodes[String(nodeId)];
+        localStorage.setItem(LMCQ_LICENSE_CODE_STORAGE_KEY, JSON.stringify(storedLicenseCodes));
+        console.log(`[LMCQ LicenseCode] Removed license code for node ${nodeId}`);
+    } catch (error) {
+        console.warn('[LMCQ LicenseCode] Failed to remove license code from localStorage:', error);
+    }
+}
+
 // 清理不存在的节点的密码
 function cleanupStoredPasswords() {
     try {
         const storedPasswords = JSON.parse(localStorage.getItem(LMCQ_PASSWORD_STORAGE_KEY) || '{}');
+        const storedLicenseCodes = JSON.parse(localStorage.getItem(LMCQ_LICENSE_CODE_STORAGE_KEY) || '{}');
         const currentNodeIds = new Set();
         
         // 收集当前所有LmcqGroupNode的ID - 增加安全检查
@@ -84,18 +136,32 @@ function cleanupStoredPasswords() {
             }
         }
         
-        // 删除不存在的节点的密码
-        let hasChanges = false;
+        // 删除不存在的节点的密码和授权码
+        let hasPasswordChanges = false;
+        let hasLicenseCodeChanges = false;
+        
         for (const nodeId in storedPasswords) {
             if (!currentNodeIds.has(nodeId)) {
                 delete storedPasswords[nodeId];
-                hasChanges = true;
+                hasPasswordChanges = true;
                 console.log(`[LMCQ Password] Cleaned up password for removed node ${nodeId}`);
             }
         }
         
-        if (hasChanges) {
+        for (const nodeId in storedLicenseCodes) {
+            if (!currentNodeIds.has(nodeId)) {
+                delete storedLicenseCodes[nodeId];
+                hasLicenseCodeChanges = true;
+                console.log(`[LMCQ LicenseCode] Cleaned up license code for removed node ${nodeId}`);
+            }
+        }
+        
+        if (hasPasswordChanges) {
             localStorage.setItem(LMCQ_PASSWORD_STORAGE_KEY, JSON.stringify(storedPasswords));
+        }
+        
+        if (hasLicenseCodeChanges) {
+            localStorage.setItem(LMCQ_LICENSE_CODE_STORAGE_KEY, JSON.stringify(storedLicenseCodes));
         }
     } catch (error) {
         console.warn('[LMCQ Password] Failed to cleanup stored passwords:', error);
@@ -852,17 +918,87 @@ app.registerExtension({
                         console.log(`[LMCQ Password] Initialized password persistence for node ${nodeId}`);
                     }
                     
+                    // License Code widget - 实现授权码持久化
+                    const licenseCodeWidget = this.widgets?.find(w => w.name === "license_code");
+                    if (licenseCodeWidget) {
+                        const nodeId = String(this.id);
+                        
+                        // 恢复保存的授权码
+                        const savedLicenseCode = getLicenseCodeFromStorage(nodeId);
+                        if (savedLicenseCode) {
+                            licenseCodeWidget.value = savedLicenseCode;
+                            console.log(`[LMCQ LicenseCode] Restored license code for node ${nodeId}`);
+                        }
+                        
+                        // 保存原始callback
+                        const originalLicenseCallback = licenseCodeWidget.callback;
+                        
+                        // 重写callback以实现自动保存
+                        licenseCodeWidget.callback = (value) => {
+                            // 先调用原始callback
+                            if (originalLicenseCallback) {
+                                originalLicenseCallback.call(licenseCodeWidget, value);
+                            }
+                            
+                            // 保存授权码到localStorage
+                            if (value && value.trim()) {
+                                saveLicenseCodeToStorage(nodeId, value);
+                            } else {
+                                // 如果授权码为空，从存储中删除
+                                removeLicenseCodeFromStorage(nodeId);
+                            }
+                        };
+                        
+                        // 为输入框添加change和blur事件监听（如果有输入框）
+                        if (licenseCodeWidget.inputEl) {
+                            const handleLicenseCodeChange = () => {
+                                const value = licenseCodeWidget.inputEl.value;
+                                licenseCodeWidget.value = value; // 更新widget值
+                                if (value && value.trim()) {
+                                    saveLicenseCodeToStorage(nodeId, value);
+                                } else {
+                                    removeLicenseCodeFromStorage(nodeId);
+                                }
+                            };
+                            
+                            licenseCodeWidget.inputEl.addEventListener('input', handleLicenseCodeChange);
+                            licenseCodeWidget.inputEl.addEventListener('change', handleLicenseCodeChange);
+                            licenseCodeWidget.inputEl.addEventListener('blur', handleLicenseCodeChange);
+                        } else {
+                            // 如果输入框还没创建，稍后再试
+                            setTimeout(() => {
+                                if (licenseCodeWidget.inputEl) {
+                                    const handleLicenseCodeChange = () => {
+                                        const value = licenseCodeWidget.inputEl.value;
+                                        licenseCodeWidget.value = value;
+                                        if (value && value.trim()) {
+                                            saveLicenseCodeToStorage(nodeId, value);
+                                        } else {
+                                            removeLicenseCodeFromStorage(nodeId);
+                                        }
+                                    };
+                                    
+                                    licenseCodeWidget.inputEl.addEventListener('input', handleLicenseCodeChange);
+                                    licenseCodeWidget.inputEl.addEventListener('change', handleLicenseCodeChange);
+                                    licenseCodeWidget.inputEl.addEventListener('blur', handleLicenseCodeChange);
+                                }
+                            }, 100);
+                        }
+                        
+                        console.log(`[LMCQ LicenseCode] Initialized license code persistence for node ${nodeId}`);
+                    }
+                    
                 } catch(e) {
                      console.error("[LMCQ GroupNode JS onNodeCreated] Error initializing widgets:", e);
                 }
                 // --- END Initialization ---
 
-                // --- Serialize logic - 清空工作流中的密码但保持localStorage ---
+                // --- Serialize logic - 清空工作流中的密码和授权码但保持localStorage ---
                 const originalSerialize = this.serialize;
                 this.serialize = () => {
                     const data = originalSerialize.call(this);
                     if (data.widgets_values && Array.isArray(data.widgets_values)) {
-                         // 查找由 Python 定义创建的密码小部件 (它应该是 widgets 数组中的第一个)
+                         // 查找由 Python 定义创建的密码小部件
                          const passwordWidgetIndex = this.widgets ? this.widgets.findIndex(w => w.name === "password") : -1;
                          if (passwordWidgetIndex !== -1 && passwordWidgetIndex < data.widgets_values.length) {
                              // 保存当前密码到localStorage（以防还没保存）
@@ -875,6 +1011,21 @@ app.registerExtension({
                               data.widgets_values[passwordWidgetIndex] = "";
                          } else {
                              console.warn("[LMCQ GroupNode Serialize] Could not find password widget index in widgets_values to clear.");
+                         }
+                         
+                         // 查找由 Python 定义创建的授权码小部件
+                         const licenseCodeWidgetIndex = this.widgets ? this.widgets.findIndex(w => w.name === "license_code") : -1;
+                         if (licenseCodeWidgetIndex !== -1 && licenseCodeWidgetIndex < data.widgets_values.length) {
+                             // 保存当前授权码到localStorage（以防还没保存）
+                             const currentLicenseCode = data.widgets_values[licenseCodeWidgetIndex];
+                             if (currentLicenseCode && currentLicenseCode.trim()) {
+                                 saveLicenseCodeToStorage(String(this.id), currentLicenseCode);
+                             }
+                             
+                             console.log(`[LMCQ GroupNode Serialize] Clearing license code from workflow at index ${licenseCodeWidgetIndex}, but keeping in localStorage`);
+                              data.widgets_values[licenseCodeWidgetIndex] = "";
+                         } else {
+                             console.warn("[LMCQ GroupNode Serialize] Could not find license code widget index in widgets_values to clear.");
                          }
                     }
                     return data;
@@ -927,21 +1078,37 @@ app.registerExtension({
                     } else {
                         console.warn('[LMCQ Password] Cannot restore password: node or node.id is undefined');
                     }
+                    
+                    // 恢复授权码小部件的值 - 增加安全检查
+                    const licenseCodeWidget = this.widgets ? this.widgets.find(w => w.name === "license_code") : null;
+                    if (licenseCodeWidget && this && this.id !== undefined && this.id !== null) {
+                        const nodeId = String(this.id);
+                        const savedLicenseCode = getLicenseCodeFromStorage(nodeId);
+                        if (savedLicenseCode) {
+                            licenseCodeWidget.value = savedLicenseCode;
+                            console.log(`[LMCQ LicenseCode] Restored license code in configure for node ${nodeId}`);
+                        }
+                    } else if (!licenseCodeWidget) {
+                        console.log('[LMCQ LicenseCode] No license code widget found for license code restoration');
+                    } else {
+                        console.warn('[LMCQ LicenseCode] Cannot restore license code: node or node.id is undefined');
+                    }
                 };
 
                 return r;
             };
 
-            // 添加onRemoved回调以清理密码存储
+            // 添加onRemoved回调以清理密码和授权码存储
             const onRemoved = nodeType.prototype.onRemoved;
             nodeType.prototype.onRemoved = function() {
                 // ✅ 增加安全检查
                 if (this && this.id !== undefined && this.id !== null) {
                     const nodeId = String(this.id);
                     removePasswordFromStorage(nodeId);
-                    console.log(`[LMCQ Password] Cleaned up password for removed node ${nodeId}`);
+                    removeLicenseCodeFromStorage(nodeId);
+                    console.log(`[LMCQ Password] Cleaned up password and license code for removed node ${nodeId}`);
                 } else {
-                    console.warn('[LMCQ Password] Cannot clean up password: node or node.id is undefined');
+                    console.warn('[LMCQ Password] Cannot clean up password and license code: node or node.id is undefined');
                 }
                 
                 if (onRemoved) {
@@ -1095,8 +1262,8 @@ const ext = {
         // ✅ 使用安全的密码清理函数
         safeCleanupStoredPasswords();
         
-        console.log(`[LMCQ] 注册了 ${nodeName} 扩展，密码持久化系统已初始化。`);
-        console.log(`[LMCQ] 可在控制台使用 window.clearLmcqPasswords() 清除所有保存的密码`);
+        console.log(`[LMCQ] 注册了 ${nodeName} 扩展，密码和授权码持久化系统已初始化。`);
+        console.log(`[LMCQ] 可在控制台使用 window.clearLmcqPasswords() 清除所有保存的密码和授权码`);
     },
     
     // ✅ 新增：监听工作流加载事件
@@ -1122,8 +1289,9 @@ const ext = {
 window.clearLmcqPasswords = function() {
     try {
         localStorage.removeItem(LMCQ_PASSWORD_STORAGE_KEY);
-        console.log('[LMCQ Password] All saved passwords have been cleared');
-        alert('所有保存的LMCQ加密组密码已清除');
+        localStorage.removeItem(LMCQ_LICENSE_CODE_STORAGE_KEY);
+        console.log('[LMCQ Password] All saved passwords and license codes have been cleared');
+        alert('所有保存的LMCQ加密组密码和授权码已清除');
     } catch (error) {
         console.error('[LMCQ Password] Failed to clear passwords:', error);
         alert('清除密码失败，请检查控制台');
