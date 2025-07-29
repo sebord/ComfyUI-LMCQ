@@ -1,16 +1,73 @@
 # ComfyUI-LMCQ
 **Read this in other languages: [中文](README_CN.md).**
 
+## Update Log July 29, 2025 (Authorization Code System & Configurable API Endpoints!)
+
+We are excited to announce two significant updates that enhance both usability and flexibility:
+
+### 🔑 New Authorization Code System
+![licenseCode.png](licenseCode.png)
+
+**What's New:**
+- ✓ Cloud-based authorization code generation for encrypted models and workflows
+- ✓ One-click distribution of authorization codes to users
+- ✓ Automatic machine binding on first verification
+- ✓ No more manual machine code exchanges!
+
+**How It Works:**
+1. **For Creators:**
+   - Generate authorization codes in the cloud platform for your encrypted models/workflows
+   - Share these codes with your authorized users
+   - No need to manually collect and bind machine codes anymore!
+
+2. **For Users:**
+   - Simply enter the authorization code in the `license_code` field of any decryption node
+   - On first verification, your machine is automatically bound to that model/workflow
+   - Access all authorized content immediately without sending machine codes to creators
+
+**Supported Nodes:**
+- All encrypted model decryption nodes (`LmcqAuthModelDecryption`)
+- All encrypted LoRA decryption nodes (`LmcqAuthLoraDecryption`)
+- All encrypted workflow nodes (`LmcqAuthWorkflowDecryption`)
+- All encrypted group nodes (`LmcqGroupNodes`)
+
+**Benefits:**
+- 📱 **Simplified Authorization**: No more complex machine code exchanges
+- 🔄 **Self-Service Binding**: Users can self-authorize with valid codes
+- 🛡️ **Enhanced Security**: Each code can have usage limitations and expiration dates
+- ⏱️ **Time-Saving**: Instantly distribute authorization to multiple users
+
+### 🌐 Configurable API Endpoints
+
+**New Feature:**
+- ✓ Configurable API endpoint URLs in `auth_key.json`
+- ✓ Support for private cloud deployments
+- ✓ Default fallback to public servers if not configured
+
+**How to Configure:**
+Simply add a `base_url` parameter in your `auth_key.json` file:
+```json
+{
+    "auth_key": "YOUR_AUTH_KEY",
+    "auth_secret": "YOUR_AUTH_SECRET",
+    "base_url": "http://your.custom.server:port/api/v1"
+}
+```
+
+**Benefits:**
+- 🏢 **Private Deployments**: Deploy your own authorization server for enhanced control
+- 🔒 **Enhanced Privacy**: Keep all authorization traffic within your own network
+- 🌍 **Global Flexibility**: Configure regional servers for improved performance
+- 🔄 **Seamless Fallback**: If no custom URL is provided, the system automatically uses the default public server
+
+This update dramatically improves the user experience for both content creators and end-users by eliminating the cumbersome process of manually exchanging machine codes, while also providing the flexibility to use custom authorization servers!
+
+---
+
 ## Introduction
 
 ComfyUI small node toolkit, this toolkit is mainly to update some practical small nodes, to make a contribution to the comfyui ecosystem,
 PS: "LMCQ" is the abbreviation of the team name
-
-## Update log July 3, 2025 (Server migration)
-1. Due to the request address adjustment, please update the code and adjust the runtime directory according to your python version
-2. Cloud Linux supports version 3.13!
-Temporary new cloud address: http://47.108.21.185:4660/#/login
-
 
 ## Update Log June 1, 2025 (Fixed the Wire Disconnection Issue After Encryption!)
 
