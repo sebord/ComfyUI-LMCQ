@@ -12,6 +12,8 @@ PS："LMCQ"是团队名称的简写
 ### 🔑 全新授权码系统
 ![licenseCode.png](licenseCode.png)
 
+### 云端服务平台访问地址：https://modelkey.cn
+
 **新增功能：**
 - ✓ 云端生成加密模型和工作流的授权码
 - ✓ 一键分发授权码给用户
