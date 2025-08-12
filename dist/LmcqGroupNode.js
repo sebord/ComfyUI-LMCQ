@@ -393,375 +393,7 @@ function detectCycleInSelection(selectedNodes) {
     return { hasLoop: false };
 }
 
-// Updated function to use ComfyUI's standard graphToPrompt API for reliable connection analysis
-async function addEncryptedGroupNode(selected, identifier, password, machineCodes) {
-    const selectedNodeIds = selected.map(node => String(node.id));
-    const graph = app.graph;
-    
-    // console.log(`[LMCQ GroupNode JS] Starting group creation for ${selectedNodeIds.length} nodes using ComfyUI standard API`);
-    // console.log(`[LMCQ GroupNode JS] Selected node IDs:`, selectedNodeIds);
-    
-    // --- 🚨 预检测循环依赖 ---
-    const cycleCheck = detectCycleInSelection(selected);
-    if (cycleCheck.hasLoop) {
-        alert(`❌ 无法创建加密组：\n\n${cycleCheck.message}\n\n建议解决方案：\n1. 分别加密这些节点\n2. 或者同时选择中间节点"${cycleCheck.nodeB.title || cycleCheck.nodeB.type}"`);
-        console.error(`[LMCQ GroupNode JS] Cycle detected, aborting group creation`);
-        return null;
-    }
-    
-    // --- 🚀 使用ComfyUI标准API获取连接信息 ---
-    const promptData = await app.graphToPrompt();
-    const output = promptData.output;
-    
-    // console.log(`[LMCQ GroupNode JS] Got prompt data with ${Object.keys(output).length} nodes`);
-    
-    // --- 📊 分析跨组边界的连接 ---
-    const externalInputs = new Map(); // 需要创建的输入端口
-    const externalOutputs = new Map(); // 需要创建的输出端口
-    const internalSubgraph = {}; // 内部子图数据
-    
-    // 1. 直接分析选中节点的输入端口连接（更准确的方法）
-    for (const nodeId of selectedNodeIds) {
-        const node = graph._nodes_by_id[nodeId];
-        if (node) {
-            // 先从prompt.output获取节点基础数据（如果存在）
-            if (output[nodeId]) {
-                internalSubgraph[nodeId] = { ...output[nodeId], outputs: [] };
-            } else {
-                // 如果prompt.output中没有，创建基础结构
-                console.warn(`[LMCQ GroupNode JS] Node ${nodeId} not found in prompt.output, creating basic structure`);
-                internalSubgraph[nodeId] = { 
-                    inputs: {}, 
-                    class_type: node.comfyClass || node.type,
-                    outputs: [] 
-                };
-                
-                // 添加widget数据
-                if (node.widgets) {
-                    for (const widget of node.widgets) {
-                    if (!widget.options || widget.options.serialize !== false) {
-                            internalSubgraph[nodeId].inputs[widget.name] = widget.serializeValue ? 
-                                await widget.serializeValue(node, widget) : widget.value;
-                    }
-                }
-            }
-            }
-            
-            console.log(`[LMCQ GroupNode JS] Analyzing inputs for internal node: ${nodeId} (${node.inputs?.length || 0} inputs)`);
-            
-            // 直接分析节点的输入端口连接
-            if (node.inputs) {
-                for (let inputSlot = 0; inputSlot < node.inputs.length; inputSlot++) {
-                    const inputPort = node.inputs[inputSlot];
-                    const inputName = inputPort.name;
-                    
-                    console.log(`[LMCQ GroupNode JS] Checking input ${nodeId}:${inputSlot} (${inputName}), link: ${inputPort.link}`);
-                    
-                    if (inputPort.link !== null && inputPort.link !== undefined) {
-                        const link = graph.links[inputPort.link];
-                        if (link && !selectedNodeIds.includes(String(link.origin_id))) {
-                            // 这是一个来自外部的输入连接
-                            const sourceNode = graph._nodes_by_id[link.origin_id];
-                            if (sourceNode && sourceNode.outputs && sourceNode.outputs[link.origin_slot]) {
-                                const sourceOutput = sourceNode.outputs[link.origin_slot];
-                                const inputKey = `${nodeId}:${inputName}`;
-                                
-                                externalInputs.set(inputKey, {
-                                    sourceNodeId: String(link.origin_id),
-                                    sourceSlot: link.origin_slot,
-                                    targetNodeId: nodeId,
-                                    inputName: inputName,
-                                    inputType: sourceOutput.type,
-                                    sourceNode: sourceNode,
-                                    targetNode: node,
-                                    targetSlot: inputSlot
-                                });
-                                
-                                console.log(`[LMCQ GroupNode JS] ✅ External input found: ${link.origin_id}:${link.origin_slot} (${sourceOutput.name}) -> ${nodeId}:${inputSlot} (${inputName}) [${sourceOutput.type}]`);
-                            }
-                        } else if (link) {
-                            console.log(`[LMCQ GroupNode JS] Internal connection: ${link.origin_id}:${link.origin_slot} -> ${nodeId}:${inputSlot}`);
-                        }
-                    } else {
-                        console.log(`[LMCQ GroupNode JS] Input ${nodeId}:${inputSlot} (${inputName}) has no connection`);
-                    }
-                }
-            }
-        }
-    }
-    
-    // 2. 直接分析选中节点的输出端口连接（更准确的方法）
-    for (const nodeId of selectedNodeIds) {
-        const node = graph._nodes_by_id[nodeId];
-        if (node && node.outputs) {
-            console.log(`[LMCQ GroupNode JS] Analyzing outputs for internal node: ${nodeId} (${node.outputs.length} outputs)`);
-            
-            for (let outputSlot = 0; outputSlot < node.outputs.length; outputSlot++) {
-                const outputPort = node.outputs[outputSlot];
-                const outputKey = `${nodeId}:${outputSlot}`;
-                
-                console.log(`[LMCQ GroupNode JS] Checking output ${outputKey}: ${outputPort.name} (${outputPort.type}), links: ${outputPort.links?.length || 0}`);
-                
-                // 检查这个输出是否连接到外部节点
-                if (outputPort.links && outputPort.links.length > 0) {
-                    for (const linkId of outputPort.links) {
-                        const link = graph.links[linkId];
-                        if (link && !selectedNodeIds.includes(String(link.target_id))) {
-                            // 这个输出连接到了外部节点
-                            const targetNode = graph._nodes_by_id[link.target_id];
-                            if (targetNode && targetNode.inputs && targetNode.inputs[link.target_slot]) {
-                                const targetInput = targetNode.inputs[link.target_slot];
-                                
-                                externalOutputs.set(outputKey, {
-                                    sourceNodeId: nodeId,
-                                    sourceSlot: outputSlot,
-                                    targetNodeId: String(link.target_id),
-                                    inputName: targetInput.name,
-                                    outputType: outputPort.type,
-                                    outputName: outputPort.name,
-                                    sourceNode: node,
-                                    targetNode: targetNode,
-                                    targetSlot: link.target_slot
-                                });
-                                
-                                // console.log(`[LMCQ GroupNode JS] ✅ External output found: ${nodeId}:${outputSlot} (${outputPort.name}) -> ${link.target_id}:${link.target_slot} (${targetInput.name})`);
-                                break; // 只需要记录一次这个输出端口
-                            }
-                        }
-                    }
-            } else {
-                    console.log(`[LMCQ GroupNode JS] Output ${outputKey} has no external connections`);
-                }
-            }
-        }
-    }
-    
-    // console.log(`[LMCQ GroupNode JS] Analysis complete: ${externalInputs.size} external inputs, ${externalOutputs.size} external outputs`);
-    
-    // --- 🏗️ 创建加密组节点 ---
-    const encryptedGroupNode = LiteGraph.createNode(nodeName);
-    encryptedGroupNode.removeOutput(0); // 移除默认输出
-    encryptedGroupNode.pos = selected[0].pos;
-    encryptedGroupNode.title = identifier;
-    graph.add(encryptedGroupNode);
-    
-    // console.log(`[LMCQ GroupNode JS] Created encrypted group node: ${encryptedGroupNode.id}`);
-    
-    // --- 📥 创建输入端口并建立外部输入连接 ---
-    const inputPortMapping = new Map();
-    let inputPortIndex = 0;
-    
-        for (const [inputKey, inputInfo] of externalInputs) {
-        try {
-            const portName = `${inputInfo.inputName}_${inputPortIndex}`;
-            encryptedGroupNode.addInput(portName, inputInfo.inputType);
-            
-            // 先断开原有连接
-            inputInfo.targetNode.disconnectInput(inputInfo.targetSlot);
-            
-            // 建立从外部节点到组节点的连接
-            inputInfo.sourceNode.connect(inputInfo.sourceSlot, encryptedGroupNode, inputPortIndex);
-            
-            // 更新内部子图数据，将外部输入映射到隐藏端口
-            internalSubgraph[inputInfo.targetNodeId].inputs[inputInfo.inputName] = ["hidden", portName];
-            
-            inputPortMapping.set(inputKey, portName);
-            
-            // console.log(`[LMCQ GroupNode JS] ✅ Created input port ${inputPortIndex}: ${portName} (${inputInfo.inputType})`);
-            // console.log(`[LMCQ GroupNode JS] ✅ Connected external input: ${inputInfo.sourceNodeId}:${inputInfo.sourceSlot} -> group:${inputPortIndex}`);
-            
-            inputPortIndex++;
-                            } catch (error) {
-            console.error(`[LMCQ GroupNode JS] ❌ Failed to create input port for ${inputKey}:`, error);
-        }
-    }
-    
-    // --- 📤 创建输出端口并建立外部输出连接 ---
-    const outputPortMapping = new Map();
-    let outputPortIndex = 0;
-    
-    for (const [outputKey, outputInfo] of externalOutputs) {
-        try {
-            const portName = `${outputInfo.outputName}_${outputPortIndex}`;
-            encryptedGroupNode.addOutput(portName, outputInfo.outputType);
-            
-            // 先断开原有连接
-            outputInfo.targetNode.disconnectInput(outputInfo.targetSlot);
-            
-            // 建立新的连接：组节点输出 -> 外部节点输入
-            encryptedGroupNode.connect(outputPortIndex, outputInfo.targetNode, outputInfo.targetSlot);
-            
-            outputPortMapping.set(outputKey, {
-                portIndex: outputPortIndex,
-                portName: portName,
-                outputInfo: outputInfo
-            });
-            
-            // console.log(`[LMCQ GroupNode JS] ✅ Created output port ${outputPortIndex}: ${portName} (${outputInfo.outputType})`);
-            // console.log(`[LMCQ GroupNode JS] ✅ Connected external output: group:${outputPortIndex} -> ${outputInfo.targetNodeId}:${outputInfo.targetSlot} (${outputInfo.inputName})`);
-            
-            outputPortIndex++;
-        } catch (error) {
-            console.error(`[LMCQ GroupNode JS] ❌ Failed to create output port for ${outputKey}:`, error);
-        }
-    }
-    
-    // --- 📊 构建最终子图数据 ---
-    const finalSubgraphData = {
-        ...internalSubgraph
-    };
-    
-        // --- 🔗 构建输出映射 ---
-    const outputsMapping = [];
-    for (const [outputKey, portMapping] of outputPortMapping) {
-        const { portIndex } = portMapping;
-        const [nodeId, outputSlot] = outputKey.split(':');
-        
-        // 输出映射格式：[组节点输出索引, 内部节点ID, 内部节点输出槽位]
-        outputsMapping.push([portIndex, nodeId, parseInt(outputSlot)]);
-        
-        // console.log(`[LMCQ GroupNode JS] Output mapping: group port ${portIndex} <- internal ${nodeId}:${outputSlot}`);
-    }
-    
-    // 设置输出映射到子图数据
-    finalSubgraphData._outputs_ = outputsMapping;
-    //
-    
-    // 🚨 重要：正确处理内部连接，保留原有的outputs数据
-    for (const nodeId in finalSubgraphData) {
-        if (nodeId === '_outputs_') continue; // 跳过特殊字段
-        
-        // 检查输入中是否有隐藏输入引用外部节点
-        if (finalSubgraphData[nodeId].inputs) {
-            for (const inputName in finalSubgraphData[nodeId].inputs) {
-                const inputValue = finalSubgraphData[nodeId].inputs[inputName];
-                
-                // 如果输入值是数组且第一个元素是节点ID，检查是否为外部节点
-                if (Array.isArray(inputValue) && inputValue.length >= 2) {
-                    const [sourceNodeId, sourceSlot] = inputValue;
-                    
-                    // 如果引用的是外部节点，转换为隐藏输入
-                    if (!selectedNodeIds.includes(String(sourceNodeId))) {
-                        // 找到对应的输入端口映射
-                        for (const [inputKey, portName] of inputPortMapping) {
-                            if (inputKey === `${nodeId}:${inputName}`) {
-                                finalSubgraphData[nodeId].inputs[inputName] = ["hidden", portName];
-                                console.log(`[LMCQ GroupNode JS] Converted external reference to hidden input: ${inputName} -> ${portName}`);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        // 确保节点数据结构完整性
-        if (!finalSubgraphData[nodeId].class_type) {
-            console.warn(`[LMCQ GroupNode JS] ⚠️  Node ${nodeId} missing class_type, attempting to recover...`);
-            const node = graph._nodes_by_id[nodeId];
-            if (node) {
-                finalSubgraphData[nodeId].class_type = node.comfyClass || node.type;
-            }
-        }
-        
-        // 🚨 清理outputs数组：保留内部连接，移除外部引用（防止循环依赖）
-        if (finalSubgraphData[nodeId].outputs && Array.isArray(finalSubgraphData[nodeId].outputs)) {
-            const originalOutputsCount = finalSubgraphData[nodeId].outputs.length;
-            
-            // 过滤outputs：只保留指向内部节点的连接
-            finalSubgraphData[nodeId].outputs = finalSubgraphData[nodeId].outputs.filter(output => {
-                if (Array.isArray(output) && output.length >= 2) {
-                    const targetNodeId = String(output[1]); // 目标节点ID
-                    const isInternal = selectedNodeIds.includes(targetNodeId);
-                    
-                    if (!isInternal) {
-                        console.log(`[LMCQ GroupNode JS] Removed external output reference: ${nodeId} -> ${targetNodeId} (preventing cycle)`);
-                }
-                    
-                    return isInternal; // 只保留内部连接
-                }
-                return false; // 移除格式不正确的条目
-            });
-            
-            console.log(`[LMCQ GroupNode JS] Node ${nodeId} outputs cleaned: ${originalOutputsCount} -> ${finalSubgraphData[nodeId].outputs.length} (internal only)`);
-        } else {
-            // 确保outputs是数组格式
-            finalSubgraphData[nodeId].outputs = [];
-            console.log(`[LMCQ GroupNode JS] Node ${nodeId} outputs initialized as empty array`);
-        }
-    }
-    
-    // console.log(`[LMCQ GroupNode JS] Final subgraph data cleaned and prepared`);
-    // console.log(`[LMCQ GroupNode JS] Internal nodes: ${Object.keys(finalSubgraphData).length}`);
-    // console.log(`[LMCQ GroupNode JS] Created ${encryptedGroupNode.inputs?.length || 0} input ports and ${encryptedGroupNode.outputs?.length || 0} output ports`);
-    
-    try {
-        // 加密子图数据
-        const { encryptedText } = await encipher(JSON.stringify(finalSubgraphData, null, 2), password, identifier, machineCodes);
-        
-        // 设置加密数据
-        const dataWidget = encryptedGroupNode.widgets?.find(w => w.name === "encrypted_subgraph");
-        if (dataWidget) {
-            dataWidget.value = encryptedText;
-            // console.log("[LMCQ GroupNode JS] Set encrypted_subgraph widget value.");
-        } else {
-            throw new Error("内部错误：无法存储加密数据。");
-        }
-
-        // 设置标识符
-        const identifierWidget = encryptedGroupNode.widgets?.find(w => w.name === "workflow_identifier");
-        if (identifierWidget) {
-            identifierWidget.value = identifier;
-            if (identifierWidget.inputEl) {
-                identifierWidget.inputEl.disabled = true;
-            }
-            // console.log("[LMCQ GroupNode JS] Set workflow_identifier widget value.");
-        } else {
-             throw new Error("内部错误：无法存储加密节点组名称。");
-        }
-        
-        // 触发更新
-        if (app.nodeOutputs) app.nodeOutputs.networkIO?.markDirty();
-        encryptedGroupNode.setDirtyCanvas(true, false);
-         
-                // --- 🗑️ 安全删除原始节点 ---
-        // console.log(`[LMCQ GroupNode JS] Removing ${selectedNodeIds.length} original nodes...`);
-        
-        for (let i = app.graph._nodes.length - 1; i >= 0; i--) {
-            const node = app.graph._nodes[i];
-            if (selectedNodeIds.includes(String(node.id))) {
-                // console.log(`[LMCQ GroupNode JS] Removing node: ${node.id} (${node.title})`);
-                
-                try {
-                    // 让ComfyUI的标准方法处理节点移除
-                    if (node.onRemoved) {
-                        node.onRemoved();
-                    }
-                    
-                    // 从图中移除节点（LiteGraph会自动处理连接清理）
-                    graph.remove(node);
-                    
-                } catch (error) {
-                    console.warn(`[LMCQ GroupNode JS] Warning: Error removing node ${node.id}:`, error);
-                    // 即使出错也继续，不中断整个过程
-                }
-            }
-        }
-        
-        // 最终清理和重绘
-        graph.setDirtyCanvas(true, true)
-        
-        // console.log("[LMCQ GroupNode JS] ✅ Node group creation completed successfully");
-        return encryptedGroupNode;
-        
-    } catch (error) {
-        console.error("[LMCQ GroupNode JS] ❌ addEncryptedGroupNode failed:", error);
-        if (encryptedGroupNode.graph) { 
-            graph.remove(encryptedGroupNode); 
-        }
-        throw error;
-    }
-}
+// Updated function (legacy) removed to avoid duplicate identifier; kept newer implementation below.
 
 // Register the node type
 app.registerExtension({
@@ -1130,6 +762,16 @@ app.registerExtension({
 
 // Function to add the right-click menu option (Updated)
 function addConvertToEncryptedGroupOptions() {
+    // Idempotent install guard to avoid duplicate menu entries
+    try {
+        if (typeof LGraphCanvas === 'undefined') return;
+        const proto = LGraphCanvas.prototype;
+        if (proto.__lmcq_menu_patched__) return;
+        // mark as patched at the end after successful overrides
+    } catch (e) {
+        // If environment not ready, just return silently
+        return;
+    }
     function addOption(options, index, selectedNodes) {
         let disabled = selectedNodes.length < 1;
         let menuText = menuLabel;
@@ -1174,9 +816,10 @@ function addConvertToEncryptedGroupOptions() {
 
     // --- Canvas Menu Options (Add Logging & Try-Catch) ---
     const origGetCanvasMenuOptions = LGraphCanvas.prototype.getCanvasMenuOptions;
+    if (!LGraphCanvas.prototype.__lmcq_canvas_menu_wrapped__) {
     LGraphCanvas.prototype.getCanvasMenuOptions = function() {
         // console.log("[LMCQ GroupNode JS] getCanvasMenuOptions called."); // Log override trigger
-        const options = origGetCanvasMenuOptions.apply(this, arguments);
+        const options = origGetCanvasMenuOptions ? origGetCanvasMenuOptions.apply(this, arguments) : [];
         const selectedNodes = Object.values(app.canvas.selected_nodes || {});
         const group = this.graph.getGroupOnPos(this.graph_mouse[0], this.graph_mouse[1]);
 
@@ -1230,26 +873,33 @@ function addConvertToEncryptedGroupOptions() {
 
         return options;
     };
+    LGraphCanvas.prototype.__lmcq_canvas_menu_wrapped__ = true;
+    }
 
     // --- Node Menu Options (Add Logging) ---
     const getNodeMenuOptions = LGraphCanvas.prototype.getNodeMenuOptions;
+    if (!LGraphCanvas.prototype.__lmcq_node_menu_wrapped__) {
     LGraphCanvas.prototype.getNodeMenuOptions = function(node) {
         console.log("[LMCQ GroupNode JS] getNodeMenuOptions called for node:", node?.title);
         const options = getNodeMenuOptions.apply(this, arguments);
          const selectedNodes = Object.values(app.canvas.selected_nodes || {});
 
-        if (selectedNodes.includes(node)) {
-            const index = options.findIndex((o) => o?.content === "Remove") || options.length -1;
+        // Always append our option; disabled state is handled inside addOption
+        const index = options.length - 1;
             if (typeof addOption === 'function') {
                  console.log("[LMCQ GroupNode JS] Adding option to node menu.");
                  addOption(options, index, selectedNodes);
             } else {
                  console.error("[LMCQ GroupNode JS] addOption function is not defined in getNodeMenuOptions!");
-            }
          }
 
         return options;
     };
+    LGraphCanvas.prototype.__lmcq_node_menu_wrapped__ = true;
+    }
+
+    // Set patched flag
+    try { LGraphCanvas.prototype.__lmcq_menu_patched__ = true; } catch (e) {}
 }
 
 // Setup the extension
@@ -1278,10 +928,12 @@ const ext = {
         }
     },
     
-    // ✅ 新增：工作流改变时的处理
+    // ✅ 新增：工作流改变时的处理（确保菜单挂载）
     async graphChanged(graph) {
         console.log('[LMCQ Password] Graph changed, scheduling password cleanup...');
         safeCleanupStoredPasswords();
+        // 重新挂载一次右键菜单，以兼容某些场景下 Canvas 菜单被重置
+        addConvertToEncryptedGroupOptions();
     }
 };
 
@@ -1299,3 +951,302 @@ window.clearLmcqPasswords = function() {
 };
 
 app.registerExtension(ext); 
+
+// ===== LMCQ Encrypted Group: Subgraph-like merge and auto-rewire (refactor) =====
+// NOTE: We purposely avoid touching any cloud API flow on the backend. This client-side
+// logic builds the subgraph JSON, requests encryption, creates a group node, rewires
+// external links automatically, and injects a hidden widget (kwargsObj) that serializes
+// upstream link tuples for backend expansion.
+
+// Try installing context menus as early as possible (in case other extensions override later)
+try {
+    // In some load orders, app.registerExtension may be too late to attach menus
+    // We proactively call the installer once here; the real hook still exists above
+    if (typeof LGraphCanvas !== 'undefined') {
+        // re-attach canvas/node menu overrides safely
+        addConvertToEncryptedGroupOptions();
+        console.log('[LMCQ GroupNode JS] Early menu attach');
+    }
+} catch (e) {
+    // ignore
+}
+
+// Build a unique, stable id for nodes within the selection (string)
+function stableId(node) {
+    return String(node.id);
+}
+
+// Build external input/output exposure for selected nodes
+async function analyzeSelection(selection) {
+    const selected = new Set(selection.map(n => n.id));
+    const graph = app.graph;
+
+    const innerNodes = selection;
+    const subgraphNodes = {}; // id -> { class_type, inputs }
+
+    // Exposed inputs/outputs metadata for the group node UI
+    const exposedInputs = [];  // [{ name, type }]
+    const exposedOutputs = []; // [{ name, type, innerNodeId, innerSlot }]
+
+    // For rewiring later
+    const externalInputLinks = [];  // [{ inputName, innerNodeId, innerSlot, origin_id, origin_slot }]
+    const externalOutputLinks = []; // [{ groupOutputIndex, innerNodeId, innerSlot, target_id, target_slot }]
+
+    // Helper: get slot name/type safely
+    function getInputSlotInfo(node, slotIndex) {
+        const slot = node.inputs?.[slotIndex];
+        return {
+            name: slot?.name ?? `in_${slotIndex}`,
+            type: slot?.type ?? "*"
+        };
+    }
+    function getOutputSlotInfo(node, slotIndex) {
+        const slot = node.outputs?.[slotIndex];
+        return {
+            name: slot?.name ?? `out_${slotIndex}`,
+            type: slot?.type ?? "*"
+        };
+    }
+
+    // Map from exposed output to group output index for deterministic order
+    let groupOutputCounter = 0;
+
+    // Dedup map for external inputs by source (origin node + slot)
+    const inputBySource = new Map(); // key -> { name, type }
+
+    function allocateExposedInputName(baseName) {
+        let name = baseName || 'input';
+        const used = new Set(exposedInputs.map(e => e.name));
+        if (!used.has(name)) return name;
+        let i = 1;
+        while (used.has(`${name}_${i}`)) i++;
+        return `${name}_${i}`;
+    }
+
+    for (const node of innerNodes) {
+        const id = stableId(node);
+        const class_type = node.comfyClass || node.type;
+        const inputs = {};
+
+        // Inputs: internal vs external
+        for (let i = 0; i < (node.inputs?.length || 0); i++) {
+            const linkId = node.inputs[i]?.link;
+            if (linkId == null) continue;
+            const link = graph.links[linkId];
+            if (!link) continue;
+
+            const origin_id = String(link.origin_id);
+            const origin_slot = link.origin_slot;
+            const isInternal = selected.has(link.origin_id);
+            const { name: inputName } = getInputSlotInfo(node, i);
+
+            if (isInternal) {
+                // link to another node within selection
+                inputs[inputName] = [String(link.origin_id), origin_slot];
+            } else {
+                // external input -> deduplicate by source (origin_id, origin_slot)
+                const srcKey = `${origin_id}:${origin_slot}`;
+                let entry = inputBySource.get(srcKey);
+                if (!entry) {
+                    const base = inputName === 'clip' ? 'clip' : inputName || `in_${i}`;
+                    const name = allocateExposedInputName(base);
+                    const type = getInputSlotInfo(node, i).type;
+                    entry = { name, type };
+                    inputBySource.set(srcKey, entry);
+                    exposedInputs.push({ name, type });
+                }
+                inputs[inputName] = ["hidden", entry.name];
+                externalInputLinks.push({ inputName: entry.name, innerNodeId: id, innerSlot: i, origin_id, origin_slot });
+            }
+        }
+
+        // Literal widget values
+        if (node.widgets && node.widgets.length) {
+            for (const w of node.widgets) {
+                if (!w.name) continue;
+                if (w.options?.serialize === false) continue;
+                // Arrays need wrapping to avoid misinterpretation as links by backend
+                const idx = node.widgets.indexOf(w);
+                const v = w.serializeValue ? await w.serializeValue(node, idx) : w.value;
+                if (inputs[w.name] == null) {
+                    inputs[w.name] = Array.isArray(v) ? { __value__: v } : v;
+                }
+            }
+        }
+
+        subgraphNodes[id] = { class_type, inputs };
+
+        // Outputs: any links to outside selection become group outputs
+        for (let o = 0; o < (node.outputs?.length || 0); o++) {
+            const olinks = node.outputs[o]?.links || [];
+            for (const l of olinks) {
+                const link = graph.links[l];
+                if (!link) continue;
+                if (selected.has(link.target_id)) continue; // internal
+                const { name: outName, type } = getOutputSlotInfo(node, o);
+                const exposedName = `${node.title || node.type}_${outName}`;
+                let groupOutputIndex = exposedOutputs.findIndex(e => e.innerNodeId === id && e.innerSlot === o);
+                if (groupOutputIndex === -1) {
+                    groupOutputIndex = exposedOutputs.length;
+                    exposedOutputs.push({ name: exposedName, type, innerNodeId: id, innerSlot: o });
+                }
+                externalOutputLinks.push({ groupOutputIndex, innerNodeId: id, innerSlot: o, target_id: String(link.target_id), target_slot: link.target_slot });
+            }
+        }
+    }
+
+    // Build _outputs_ mapping for backend result ordering
+    const outputsMapping = exposedOutputs.map((e, idx) => [idx, e.innerNodeId, e.innerSlot]);
+
+    return {
+        subgraphNodes,
+        exposedInputs,
+        exposedOutputs,
+        outputsMapping,
+        externalInputLinks,
+        externalOutputLinks
+    };
+}
+
+async function requestEncryptSubgraph({ subgraph_json, password, identifier, machineCodes }) {
+    const body = {
+        subgraph_json: JSON.stringify(subgraph_json),
+        password,
+        identifier,
+        machine_codes: machineCodes || []
+    };
+    const resp = await api.fetchApi(`/lmcq/encipher_group`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`加密失败: ${txt}`);
+    }
+    const data = await resp.json();
+    if (!data?.success) throw new Error(data?.msg || '加密失败');
+    return data.encrypted_text;
+}
+
+// Hidden widget that serializes upstream links into kwargsObj for backend
+function ensureKwargsWidget(node, exposedInputs) {
+    node.widgets = node.widgets || [];
+    const existing = node.widgets.find(w => w.name === 'kwargsObj');
+    if (existing) return;
+    const widget = {
+        name: 'kwargsObj',
+        type: 'OBJECT',
+        options: { serialize: true },
+        serializeValue: (n) => {
+            const mapping = {};
+            for (let i = 0; i < (n.inputs?.length || 0); i++) {
+                const slot = n.inputs[i];
+                const inputName = slot?.name;
+                if (!inputName) continue;
+                const linkId = slot?.link;
+                if (linkId == null) continue;
+                const link = app.graph.links[linkId];
+                if (!link) continue;
+                mapping[inputName] = [String(link.origin_id), link.origin_slot];
+            }
+            return mapping;
+        },
+        value: {}
+    };
+    node.widgets.push(widget);
+}
+
+function placeNodeAtSelection(node, selection) {
+    let top, left;
+    for (const n of selection) {
+        if (left == null || n.pos[0] < left) left = n.pos[0];
+        if (top == null || n.pos[1] < top) top = n.pos[1];
+    }
+    node.pos = [left ?? 100, top ?? 100];
+}
+
+function rewireCanvasForGroup(groupNode, selection, analysis) {
+    const graph = app.graph;
+    // Input rewiring: external origin -> groupNode input
+    for (const e of analysis.externalInputLinks) {
+        const originNode = graph.getNodeById(parseInt(e.origin_id));
+        if (!originNode) continue;
+        const groupInputIndex = groupNode.inputs.findIndex(inp => inp.name === e.inputName);
+        if (groupInputIndex >= 0) {
+            originNode.connect(e.origin_slot, groupNode, groupInputIndex);
+        }
+    }
+    // Output rewiring: groupNode output -> external target
+    for (const e of analysis.externalOutputLinks) {
+        const targetNode = graph.getNodeById(parseInt(e.target_id));
+        if (!targetNode) continue;
+        const groupOutputIndex = e.groupOutputIndex;
+        groupNode.connect(groupOutputIndex, targetNode, e.target_slot);
+    }
+}
+
+async function addEncryptedGroupNode(selectedNodes, identifier, password, machineCodes) {
+    const analysis = await analyzeSelection(selectedNodes);
+
+    const subgraph_json = {
+        ...analysis.subgraphNodes,
+        _outputs_: analysis.outputsMapping
+    };
+
+    const encrypted_text = await requestEncryptSubgraph({ subgraph_json, password, identifier, machineCodes });
+
+    // Create the group node instance (backend class LmcqGroupNodes)
+    const group = LiteGraph.createNode('LmcqGroupNode');
+    if (!group) throw new Error('无法创建 LmcqGroupNodes 节点');
+    app.graph.add(group);
+
+    // Remove any default outputs (e.g., wildcard "*") before adding exposed outputs
+    if (group.outputs && group.outputs.length) {
+        for (let i = group.outputs.length - 1; i >= 0; i--) {
+            group.removeOutput(i);
+        }
+    }
+
+    // Add exposed inputs/outputs
+    for (const inp of analysis.exposedInputs) {
+        group.addInput(inp.name, inp.type || "*");
+    }
+    for (const out of analysis.exposedOutputs) {
+        group.addOutput(out.name, out.type || "*");
+    }
+
+    // Set widgets
+    const setWidget = (name, value) => {
+        const w = group.widgets?.find(w => w.name === name);
+        if (w) w.value = value;
+    };
+    setWidget('password', password || '');
+    setWidget('license_code', '');
+    setWidget('encrypted_subgraph', encrypted_text);
+    setWidget('workflow_identifier', identifier || '');
+
+    // Hidden widget to serialize external links as kwargsObj
+    ensureKwargsWidget(group, analysis.exposedInputs);
+
+    // Prevent these visual inputs from being serialized as real backend inputs
+    const originalGetInputLink = group.getInputLink?.bind(group);
+    group.getInputLink = function(slot) {
+        return null; // avoid executionUtil serializing link as node input
+    };
+    const originalGetInputNode = group.getInputNode?.bind(group);
+    group.getInputNode = function(slot) {
+        return null;
+    };
+
+    // Place group and rewire
+    placeNodeAtSelection(group, selectedNodes);
+    rewireCanvasForGroup(group, selectedNodes, analysis);
+
+    // Remove original nodes
+    for (const n of selectedNodes) app.graph.remove(n);
+
+    // Force redraw
+    app.graph.setDirtyCanvas(true, true);
+}
+
