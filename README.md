@@ -8,6 +8,8 @@ We are excited to announce two significant updates that enhance both usability a
 ### 🔑 New Authorization Code System
 ![licenseCode.png](licenseCode.png)
 
+### Cloud service platform access address: https://modelkey.cn
+
 **What's New:**
 - ✓ Cloud-based authorization code generation for encrypted models and workflows
 - ✓ One-click distribution of authorization codes to users
