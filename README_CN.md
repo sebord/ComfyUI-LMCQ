@@ -5,6 +5,9 @@
 ComfyUI小节点工具包，本工具包主要是更新一些实用的小节点，为comfyui生态做一份贡献，
 PS："LMCQ"是团队名称的简写
 
+## 更新日志 2026年1月19日 (如果使用本插件控制台提示报错：ModuleNotFoundError: No module named 'ComfyUI\custom_nodes\ComfyUI-LMCQ.runtime.model_protection')
+你需要根据启动comfyui的python版本选择本插件runtime目录下对应版本的python文件全部复制粘贴到runtime根目录，然后将其他文件删掉之后重启
+
 ## 更新日志 2025年7月29日 (授权码系统与可配置API端点！)
 
 我们很高兴地宣布两项重要更新，这些更新同时提升了易用性和灵活性：
