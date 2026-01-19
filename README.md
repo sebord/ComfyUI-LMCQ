@@ -1,6 +1,11 @@
 # ComfyUI-LMCQ
 **Read this in other languages: [中文](README_CN.md).**
 
+## If you encounter the following error in the console when using this plugin: ModuleNotFoundError: No module named 'ComfyUI\custom_nodes\ComfyUI-LMCQ.runtime.model_protection',
+
+You need to copy and paste all the Python files corresponding to the version of Python you are using to the runtime directory of this plugin into the runtime root directory, then delete the other files and restart.
+
+
 ## Update Log July 29, 2025 (Authorization Code System & Configurable API Endpoints!)
 
 We are excited to announce two significant updates that enhance both usability and flexibility:
